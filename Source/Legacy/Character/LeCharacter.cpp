@@ -245,6 +245,7 @@ void ALeCharacter::SetIsAiming(const bool bNewIsAiming)
 void ALeCharacter::Server_SetIsAiming_Implementation(const bool bNewAiming)
 {
 	bIsAiming = bNewAiming;
+	bIsAiming ? AimStart() : AimEnd();
 }
 
 #pragma endregion Constructors
@@ -378,8 +379,8 @@ bool ALeCharacter::DoDamage_Implementation(FName InHitBoneName, AActor* InDamage
 	if (HasAuthority())
 	{
 		constexpr float CalculatedDamageByBoneName = 10.0f;
-		LOG_NET_FUNC_FLOAT("DoDamage", CalculatedDamageByBoneName);
-		DecreaseHealth(CalculatedDamageByBoneName);
+        LOG_NET_FUNC_FLOAT("DoDamage", CalculatedDamageByBoneName);
+        Execute_DecreaseHealth(this, CalculatedDamageByBoneName);
 	}
 	
 	return true;
