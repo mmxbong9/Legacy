@@ -336,7 +336,7 @@ void UCombatComponent::SpawnImpactEffect(const FVector& InImpactLocation, const 
 		return;
 
 	TArray<FVector> ImpactLocationArray; ImpactLocationArray.Add(InImpactLocation);
-	UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayPosition(NiagaraComponent, FName("User.ImpacLeositions"), ImpactLocationArray);
+	UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayPosition(NiagaraComponent, FName("User.ImpactPositions"), ImpactLocationArray);
 	
 	TArray<FVector> ImpactNormalArray; ImpactNormalArray.Add(InImpactNormal);
 	UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(NiagaraComponent, FName("User.ImpactNormals"), ImpactNormalArray);
@@ -352,7 +352,7 @@ void UCombatComponent::SpawnFireTracer(const FVector& InImpactLocation, USceneCo
 		if (IsValid(NiagaraComponent))
 		{
 			TArray<FVector> ImpactLocationArray; ImpactLocationArray.Add(InImpactLocation);
-			UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(NiagaraComponent, FName("User.ImpacLeositions"), ImpactLocationArray);
+			UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(NiagaraComponent, FName("User.ImpactPositions"), ImpactLocationArray);
 		}
 	}
 }

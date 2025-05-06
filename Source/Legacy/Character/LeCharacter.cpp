@@ -5,6 +5,9 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ParkourComponent.h"
+#include "Components/CombatComponent.h"
+#include "Components/HealthComponent.h"
+#include "Components/WidgetComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -13,9 +16,6 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
-#include "Components/CombatComponent.h"
-#include "Components/HealthComponent.h"
-#include "Components/WidgetComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Legacy/Legacy.h"
 #include "Legacy/Helpers/CharacterHelper.h"
@@ -88,7 +88,7 @@ ALeCharacter::ALeCharacter()
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> GlassImpactEffectAsset(TEXT("/Game/ALS/Effects/Particles/Impacts/NS_ImpactGlass"));
 	if (GlassImpactEffectAsset.Succeeded()) { GlassImpactEffect = GlassImpactEffectAsset.Object; }
 
-	static ConstructorHelpers::FObjectFinder<UCurveFloat> AimCurveAsset(TEXT("/Game/TP/Curves/CF_Aim"));
+	static ConstructorHelpers::FObjectFinder<UCurveFloat> AimCurveAsset(TEXT("/Game/Le/Curves/CF_Aim"));
 	if (AimCurveAsset.Succeeded()) { AimCurve = AimCurveAsset.Object; }
 	
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> PistolFireMontageAsset(TEXT("/Game/ALS/Animations/Pistol/Gun/AM_MM_Pistol_Fire"));
@@ -171,7 +171,7 @@ ALeCharacter::ALeCharacter()
 		PistolWidget->SetupAttachment(Pistol, FName("Widget"));
 		PistolWidget->SetWidgetSpace(EWidgetSpace::Screen);
 		PistolWidget->SetDrawSize(FVector2D(400, 80));
-		static ConstructorHelpers::FClassFinder<UUserWidget> PistolWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_PistolUI"));
+		static ConstructorHelpers::FClassFinder<UUserWidget> PistolWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_LePistolUI"));
 		if (PistolWidgetAsset.Succeeded()) { PistolWidget->SetWidgetClass(PistolWidgetAsset.Class); }
 	}
 	
@@ -181,7 +181,7 @@ ALeCharacter::ALeCharacter()
 		RifleWidget->SetupAttachment(Rifle, FName("Widget"));
 		RifleWidget->SetWidgetSpace(EWidgetSpace::Screen);
 		RifleWidget->SetDrawSize(FVector2D(400, 80));
-		static ConstructorHelpers::FClassFinder<UUserWidget> RifleWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_RifleUI"));
+		static ConstructorHelpers::FClassFinder<UUserWidget> RifleWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_LeRifleUI"));
 		if (RifleWidgetAsset.Succeeded()) { RifleWidget->SetWidgetClass(RifleWidgetAsset.Class); }
 	}
 
@@ -198,12 +198,12 @@ ALeCharacter::ALeCharacter()
 	static ConstructorHelpers::FClassFinder<UUserWidget> ViewPortCrossHairWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_CrossHair"));
 	if (ViewPortCrossHairWidgetAsset.Succeeded()) { ViewPortCrossHairWidgetClass = ViewPortCrossHairWidgetAsset.Class; }
 
-	static ConstructorHelpers::FObjectFinder<UDataTable> WeaponMovementSettingAsset(TEXT("/Game/TP/DataTables/DT_WeaponMovement"));
+	static ConstructorHelpers::FObjectFinder<UDataTable> WeaponMovementSettingAsset(TEXT("/Game/Le/DataTables/DT_WeaponMovement"));
 	if (WeaponMovementSettingAsset.Succeeded()) { WeaponMovementSettingDataTable = WeaponMovementSettingAsset.Object; }
 	
-	static ConstructorHelpers::FClassFinder<UAnimInstance> UnArmedAnimClassBP(TEXT("/Game/TP/ABP_TpUnArmed"));
-	static ConstructorHelpers::FClassFinder<UAnimInstance> PistolAnimClassBP (TEXT("/Game/TP/ABP_TpPistol"));
-	static ConstructorHelpers::FClassFinder<UAnimInstance> RifleAnimClassBP  (TEXT("/Game/TP/ABP_TpRifle"));
+	static ConstructorHelpers::FClassFinder<UAnimInstance> UnArmedAnimClassBP(TEXT("/Game/Le/ABP_LeUnArmed"));
+	static ConstructorHelpers::FClassFinder<UAnimInstance> PistolAnimClassBP (TEXT("/Game/Le/ABP_LePistol"));
+	static ConstructorHelpers::FClassFinder<UAnimInstance> RifleAnimClassBP  (TEXT("/Game/Le/ABP_LeRifle"));
 	if (UnArmedAnimClassBP.Class != nullptr) { UnArmedAnimClass = UnArmedAnimClassBP.Class; }
 	if (PistolAnimClassBP.Class  != nullptr) { PistolAnimClass  = PistolAnimClassBP.Class; }
 	if (RifleAnimClassBP.Class   != nullptr) { RifleAnimClass   = RifleAnimClassBP.Class; }
@@ -299,7 +299,7 @@ void ALeCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	// Default Class 및 Material 설정. (생성자에서 CDO 로 오브젝트 로딩시 랜더링 스레드에서 어설션 발생하므로 설정시 주의)  
-	UClass* ShieldWidgetClass = LoadObject<UClass>(nullptr, TEXT("/Game/ALS/UI/Widgets/WBP_Shield.WBP_Shield_C"));
+	UClass* ShieldWidgetClass = LoadObject<UClass>(nullptr, TEXT("/Game/ALS/UI/Widgets/WBP_LeShield.WBP_LeShield_C"));
 	if (IsValid(ShieldWidget) && ShieldWidgetClass && ShieldWidgetClass->IsChildOf(UUserWidget::StaticClass()))
 	{
 		ShieldWidget->SetWidgetClass(ShieldWidgetClass);
