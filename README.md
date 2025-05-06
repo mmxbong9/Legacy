@@ -2,7 +2,7 @@
 
 ### 개요
 
-레퍼런스 프로젝트 Standalone, Dedicated Server 에서 동작
+Standalone, Dedicated Server 에서 동작 하며, 각종 게임에 필요한 기능들을 구현 하여, 게임 개발시 참고 가능한 레퍼런스 프로젝트.
 
 - 개발환경
     - 엔진 : UE 5.5.4
