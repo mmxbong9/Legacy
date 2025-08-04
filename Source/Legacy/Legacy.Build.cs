@@ -15,7 +15,12 @@ public class Legacy : ModuleRules
 			"Engine",
 			"InputCore",
 			"EnhancedInput",
-			"PhysicsCore"
+			"PhysicsCore",
+			"GameplayTags",
+			"UMG",
+			"CommonInput",
+			"PropertyPath",
+			"PreLoadScreen"
 		});
 
         PrivateDependencyModuleNames.AddRange(new string[]

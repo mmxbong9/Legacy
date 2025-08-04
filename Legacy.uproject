@@ -9,7 +9,11 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
-				"ChaosVehicles"
+				"ChaosVehicles",
+				"CommonUI",
+				"DeveloperSettings",
+				"Engine",
+				"CoreUObject"
 			]
 		},
 		{
@@ -64,6 +68,14 @@
 		},
 		{
 			"Name": "MotionWarping",
+			"Enabled": true
+		},
+		{
+			"Name": "CommonUI",
+			"Enabled": true
+		},
+		{
+			"Name": "MediaMovieStreamer",
 			"Enabled": true
 		}
 	]

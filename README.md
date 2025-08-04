@@ -6,8 +6,14 @@ Standalone, Dedicated Server 에서 동작 하며, 각종 게임에 필요한 �
 
 - 개발환경
     - 엔진 : UE 5.5.4
-    - IDE : Rider, VusialStudio 2022
+    - IDE : Rider, VisualStudio 2022
     - VCS : Perforce, Git
+    - CI/CD : Jenkins
+        - Deploy 단계에서 구글드라이브로 빌드된 클라이언트와 서버를 압축하여 GoogleDrive 로 업로드
+        - 구글드라이브 API 설정 후 OAuth json 파일 다운로드 및 필요한 python 라이브러리 설치
+        ```text
+        pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+        ```
 
 ### 프로젝트 관련 링크
 
@@ -21,6 +27,7 @@ Standalone, Dedicated Server 에서 동작 하며, 각종 게임에 필요한 �
 - Advanced Locomotion System
 - Advanced Vehicle System
 - Parkour System (Climbing, Mantling, Vaulting)
+- Advanced Frontend UI System (CommonUI)
 - Dedicated Server 빌드 및 멀티플레이
 
 ### 예정
