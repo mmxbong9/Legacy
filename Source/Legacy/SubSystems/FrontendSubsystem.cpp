@@ -35,6 +35,32 @@ bool UFrontendSubsystem::ShouldCreateSubsystem(UObject* InOuter) const
 	return false;
 }
 
+void UFrontendSubsystem::UnregisterPrimaryLayoutWidget()
+{
+	if (!IsValid(CreatedPrimaryLayout))
+	{
+		return;
+	}
+
+	// 1) 지역 변수로 보관하고, 즉시 널 클리어(재진입/레이스 방지)
+	ULePrimaryLayoutWidget* Layout = CreatedPrimaryLayout;
+	CreatedPrimaryLayout = nullptr;
+
+	// 2) 메인 메뉴 스택 비우기 (뷰포트 부착 여부와 무관)
+	if (IsValid(Layout))
+	{
+		if (UCommonActivatableWidgetContainerBase* Stack = Layout->FindWidgetStackByTag(LegacyGameplayTags::WidgetStack_MainMenu))
+		{
+			Stack->ClearWidgets(); // 스택 Pop 및 Activatable 종료
+		}
+
+		// 3) 뷰포트에서 제거 (없으면 noop)
+		Layout->RemoveFromParent();
+
+		UE_LOG(LogTemp, Log, TEXT("Primary layout widget removed and stack cleared."));
+	}
+}
+
 void UFrontendSubsystem::RegisterCreatedPrimaryLayoutWidget(ULePrimaryLayoutWidget* InCreatedWidget)
 {
 	check(InCreatedWidget);
@@ -108,4 +134,16 @@ void UFrontendSubsystem::PushConfirmScreenToPopupStackAsync(EConfirmScreenType I
 			}
 		}
 	);
+}
+
+void UFrontendSubsystem::RemoveActivatedPopup()
+{
+	UCommonActivatableWidgetContainerBase* WidgetStack = CreatedPrimaryLayout->FindWidgetStackByTag(LegacyGameplayTags::WidgetStack_Popup);
+	
+	check(WidgetStack);
+
+	if (UCommonActivatableWidget* ActivePopupWidget = WidgetStack->GetActiveWidget())
+	{
+		ActivePopupWidget->DeactivateWidget();
+	}
 }

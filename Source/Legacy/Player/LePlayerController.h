@@ -7,6 +7,8 @@
 #include "Legacy/Interfaces/LegacyLoadingScreenInterface.h"
 #include "LePlayerController.generated.h"
 
+class UAsyncAction_PushSoftWidget;
+class ULeActivatableWidget;
 class UEnhancedInputLocalPlayerSubsystem;
 class ULePrimaryLayoutWidget;
 
@@ -26,11 +28,11 @@ public:
 	virtual void OnLoadingScreenDeactivated_Implementation() override;
 	//~ End ILegacyLoadingScreenInterface Interface
 
+	void ToggleMainMenu();
+
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 
 private:
-	TObjectPtr<ULePrimaryLayoutWidget> WidgetPrimaryLayout;
-	
 	const FString PrimaryLayoutPath = TEXT("/Game/UI/Widgets/WBP_PrimaryLayout.WBP_PrimaryLayout_C");
 };

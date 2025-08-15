@@ -6,6 +6,7 @@
 #include "Components/TimelineComponent.h"
 #include "GameFramework/Character.h"
 #include "MotionWarpingComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Legacy/Interfaces/CharacterInterface.h"
 #include "Legacy/Types/LeTypes.h"
 
@@ -175,6 +176,8 @@ private:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_DoParkour();
+
+	void Process_SelectWeapon(const EEquipWeapon InWeapon);
 	
 	void ChangeWeapon(const EEquipWeapon InWeapon);
 	UFUNCTION(Server, Reliable)
@@ -223,7 +226,10 @@ private:
 
 protected:
 	//~ Input Events
-	void Input_SwitchWeapon(const FInputActionValue& InValue);
+	void Input_SwitchWeapon();
+	void Input_SelectWeapon1();
+	void Input_SelectWeapon2();
+	void Input_SelectWeapon3();
 	void Input_Look        (const FInputActionValue& InValue);
 	void Input_Move        (const FInputActionValue& InValue);
 	void Input_AimStart();
@@ -234,6 +240,7 @@ protected:
 	void Input_Fire();
 	void Input_Reload();
 	void Input_Interaction();
+	void Input_MainMenu();
 	//~ Input Events
 	
 protected:
@@ -248,5 +255,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> MoveIA;
 	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> ReloadIA;
 	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SwitchWeaponIA;
+	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SelectWeapon1IA;
+	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SelectWeapon2IA;
+	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SelectWeapon3IA;
+	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> MainMenuIA;
 	//~ Input Assets
 };

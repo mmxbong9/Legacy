@@ -23,7 +23,7 @@ public:
 	UFUNCTION(BlueprintCallable, meta=(WorldContext="WorldContextObject", HidePin="WorldContextObject", BlueprintInternalUseOnly=true), DisplayName="Push Soft Widget To Widget Stack")
 	static UAsyncAction_PushSoftWidget* PushSoftWidget(const UObject* WorldContextObject,
 		APlayerController* InOwningPlayerController, TSoftClassPtr<ULeActivatableWidget> InSoftWidgetClass,
-		UPARAM(meta=(Categories="WidgetStack")) FGameplayTag InWidgetTag, bool bFocusOnNewlyPushedWidget = true
+		UPARAM(meta=(Categories="WidgetStack")) FGameplayTag InWidgetTag, bool bFocusOnNewlyPushedWidget = true, bool bUseBackKeyAndActionBar = true
 		);
 
 	//~ Begin UBlueprintAsyncActionBase Interface
@@ -42,4 +42,5 @@ private:
 	TSoftClassPtr<ULeActivatableWidget> CachedSoftWidgetClass;
 	FGameplayTag CachedWidgetStackTag;
 	bool bCachedFocusOnNewlyPushedWidget = false;
+	bool bCachedUseBackKeyAndActionBar = true;
 };

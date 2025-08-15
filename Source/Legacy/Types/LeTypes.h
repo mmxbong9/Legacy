@@ -164,6 +164,23 @@ void ForEachEnum(TFunctionRef<void(TEnum)> Func)
 	}
 }
 
+template<typename TEnum>
+constexpr TEnum ToggleEnum(TEnum Current)
+{
+	static_assert(std::is_enum_v<TEnum>, "ToggleEnum requires an enum type.");
+
+	using Underlying = std::underlying_type_t<TEnum>;
+
+	Underlying NextIndex = static_cast<Underlying>(Current) + 1;
+
+	if (NextIndex >= static_cast<Underlying>(TEnum::Max))
+	{
+		NextIndex = 0;
+	}
+
+	return static_cast<TEnum>(NextIndex);
+}
+
 namespace CollisionChannelNames
 {
 	// static FName Vehicle("Vehicle");

@@ -6,7 +6,7 @@
 
 UAsyncAction_PushSoftWidget* UAsyncAction_PushSoftWidget::PushSoftWidget(const UObject* WorldContextObject,
                                                                          APlayerController* InOwningPlayerController, TSoftClassPtr<ULeActivatableWidget> InSoftWidgetClass,
-                                                                         UPARAM(meta=(Categories="WidgetStack")) FGameplayTag InWidgetTag, bool bFocusOnNewlyPushedWidget)
+                                                                         UPARAM(meta=(Categories="WidgetStack")) FGameplayTag InWidgetTag, bool bFocusOnNewlyPushedWidget, bool bUseBackKeyAndActionBar)
 {
 	checkf(!InSoftWidgetClass.IsNull(), TEXT("PushSoftWidgetToStack was passed a null soft widget class"));
 
@@ -20,6 +20,7 @@ UAsyncAction_PushSoftWidget* UAsyncAction_PushSoftWidget::PushSoftWidget(const U
 			Node->CachedSoftWidgetClass           = InSoftWidgetClass;;
 			Node->CachedWidgetStackTag            = InWidgetTag;
 			Node->bCachedFocusOnNewlyPushedWidget = bFocusOnNewlyPushedWidget;
+			Node->bCachedUseBackKeyAndActionBar   = bUseBackKeyAndActionBar;
 			Node->RegisterWithGameInstance(World);
 			
 			return Node;
@@ -38,6 +39,8 @@ void UAsyncAction_PushSoftWidget::Activate()
 	FrontendSubsystem->PushSoftWidgetToStackAsync(CachedWidgetStackTag, CachedSoftWidgetClass,
 		[this](EAsyncPushWidgetState InPushState, ULeActivatableWidget* PushedWidget)
 		{
+			PushedWidget->SetBackHandlerWithActionBarEnable(bCachedUseBackKeyAndActionBar);
+			
 			switch (InPushState)
 			{
 			case EAsyncPushWidgetState::OnCreatedBeforePush:

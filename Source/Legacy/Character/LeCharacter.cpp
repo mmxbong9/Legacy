@@ -20,6 +20,7 @@
 #include "Legacy/Legacy.h"
 #include "Legacy/Helpers/CharacterHelper.h"
 #include "Legacy/Interfaces/AnimInterface.h"
+#include "Legacy/Player/LePlayerController.h"
 #include "Legacy/Types/LeTypes.h"
 #include "Legacy/UI/LeWidget.h"
 
@@ -48,190 +49,97 @@ ALeCharacter::ALeCharacter()
 	SpringArm->TargetArmLength = 350.f;
 	SpringArm->SocketOffset = FVector(50, 80, 40);
 	SpringArm->bUsePawnControlRotation = true;
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->CameraLagSpeed = 10.f;
+	SpringArm->bEnableCameraRotationLag = true;
+	SpringArm->CameraRotationLagSpeed = 10.f;
 
-	if (IsValid(GetCharacterMovement()))
-	{
-		GetCharacterMovement()->SetCrouchedHalfHeight(60.0f);
-		GetCharacterMovement()->MaxWalkSpeedCrouched = 250.f;
-		GetCharacterMovement()->JumpZVelocity = 700.0f;
-		GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
-		GetCharacterMovement()->AirControl = 0.35f;
-	}
+	GetCharacterMovement()->SetCrouchedHalfHeight(60.0f);
+	GetCharacterMovement()->MaxWalkSpeedCrouched = 250.f;
+	GetCharacterMovement()->JumpZVelocity = 700.0f;
+	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
+	GetCharacterMovement()->AirControl = 0.35f;
 	
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
 	if (ConcreteImpactSounds.IsEmpty())
 	{
-		static ConstructorHelpers::FObjectFinder<USoundBase> ConcreteImpactSound1Asset(TEXT("/Game/ALS/MetaSound/MSP_ImpactPlaster"));
-		if (ConcreteImpactSound1Asset.Succeeded()) { ConcreteImpactSounds.Add(ConcreteImpactSound1Asset.Object); }
-		
-		static ConstructorHelpers::FObjectFinder<USoundBase> ConcreteImpactSound2Asset(TEXT("/Game/ALS/MetaSound/MSP_ImpactPlasterDebries"));
-		if (ConcreteImpactSound1Asset.Succeeded()) { ConcreteImpactSounds.Add(ConcreteImpactSound1Asset.Object); }
+		LOAD_ASSET_ADD_TO_ARRAY(ConcreteImpactSounds, USoundBase, "/Game/ALS/MetaSound/MSP_ImpactPlaster");
+		LOAD_ASSET_ADD_TO_ARRAY(ConcreteImpactSounds, USoundBase, "/Game/ALS/MetaSound/MSP_ImpactPlasterDebries");
 	}
 
 	if (GlassImpactSounds.IsEmpty())
 	{
-		static ConstructorHelpers::FObjectFinder<USoundBase> ConcreteImpactSound1Asset(TEXT("/Game/ALS/MetaSound/MSP_ImpactGlass"));
-		if (ConcreteImpactSound1Asset.Succeeded()) { GlassImpactSounds.Add(ConcreteImpactSound1Asset.Object); }
+		LOAD_ASSET_ADD_TO_ARRAY(GlassImpactSounds, USoundBase, "/Game/ALS/MetaSound/MSP_ImpactGlass");
+		LOAD_ASSET_ADD_TO_ARRAY(GlassImpactSounds, USoundBase, "/Game/ALS/MetaSound/MSP_ImpactGlassDebries");
+	}
+
+	LOAD_OBJECT_ASSIGN(FireTracerEffect,        UNiagaraSystem, "/Game/ALS/Effects/Particles/Weapons/NS_WeaponFire_Tracer");
+	LOAD_OBJECT_ASSIGN(ConcreteImpactEffect,    UNiagaraSystem, "/Game/ALS/Effects/Particles/Impacts/NS_ImpactConcrete");
+	LOAD_OBJECT_ASSIGN(GlassImpactEffect,       UNiagaraSystem, "/Game/ALS/Effects/Particles/Impacts/NS_ImpactGlass");
+
+	LOAD_OBJECT_ASSIGN(AimCurve,                UCurveFloat,    "/Game/Le/Curves/CF_Aim");
+
+	LOAD_OBJECT_ASSIGN(PistolFireMontage,       UAnimMontage,   "/Game/ALS/Animations/Pistol/Gun/AM_MM_Pistol_Fire");
+	LOAD_OBJECT_ASSIGN(PistolReloadMontage,     UAnimMontage,   "/Game/ALS/Animations/Pistol/Gun/AM_MM_Pistol_Reload");
+	LOAD_OBJECT_ASSIGN(PistolFireAnimSequence,  UAnimSequence,  "/Game/ALS/Animations/Pistol/Gun/Weap_Pistol_Fire");
+	LOAD_OBJECT_ASSIGN(PistolReloadAnimSequence,UAnimSequence,  "/Game/ALS/Animations/Pistol/Gun/Weap_Pistol_Reload");
+	LOAD_OBJECT_ASSIGN(PistolFireSound,         USoundBase,     "/Game/ALS/MetaSound/MSP_PistolFire");
+
+	LOAD_OBJECT_ASSIGN(RifleFireMontage,        UAnimMontage,   "/Game/ALS/Animations/Rifle/Gun/AM_MM_Rifle_Fire");
+	LOAD_OBJECT_ASSIGN(RifleReloadMontage,      UAnimMontage,   "/Game/ALS/Animations/Rifle/Gun/AM_MM_Rifle_Reload");
+	LOAD_OBJECT_ASSIGN(RifleFireAnimSequence,   UAnimSequence,  "/Game/ALS/Animations/Rifle/Gun/Weap_Rifle_Fire");
+	LOAD_OBJECT_ASSIGN(RifleReloadAnimSequence, UAnimSequence,  "/Game/ALS/Animations/Rifle/Gun/Weap_Rifle_Reload");
+	LOAD_OBJECT_ASSIGN(RifleFireSound,          USoundBase,     "/Game/ALS/MetaSound/MSP_RifleFire");
+
+	LOAD_ASSET_SET_SKELETAL(GetMesh(), "/Game/ALS/Characters/Heroes/Mannequin/Meshes/SKM_Manny");
 		
-		static ConstructorHelpers::FObjectFinder<USoundBase> ConcreteImpactSound2Asset(TEXT("/Game/ALS/MetaSound/MSP_ImpactGlassDebries"));
-		if (ConcreteImpactSound1Asset.Succeeded()) { GlassImpactSounds.Add(ConcreteImpactSound1Asset.Object); }
-	}
-
-	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> FireTracerEffectAsset(TEXT("/Game/ALS/Effects/Particles/Weapons/NS_WeaponFire_Tracer"));
-	if (FireTracerEffectAsset.Succeeded()) { FireTracerEffect = FireTracerEffectAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> ConcreteImpactEffectAsset(TEXT("/Game/ALS/Effects/Particles/Impacts/NS_ImpactConcrete"));
-	if (ConcreteImpactEffectAsset.Succeeded()) { ConcreteImpactEffect = ConcreteImpactEffectAsset.Object; }
-	
-	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> GlassImpactEffectAsset(TEXT("/Game/ALS/Effects/Particles/Impacts/NS_ImpactGlass"));
-	if (GlassImpactEffectAsset.Succeeded()) { GlassImpactEffect = GlassImpactEffectAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<UCurveFloat> AimCurveAsset(TEXT("/Game/Le/Curves/CF_Aim"));
-	if (AimCurveAsset.Succeeded()) { AimCurve = AimCurveAsset.Object; }
-	
-	static ConstructorHelpers::FObjectFinder<UAnimMontage> PistolFireMontageAsset(TEXT("/Game/ALS/Animations/Pistol/Gun/AM_MM_Pistol_Fire"));
-	if (PistolFireMontageAsset.Succeeded()) { PistolFireMontage = PistolFireMontageAsset.Object; }
-	
-	static ConstructorHelpers::FObjectFinder<UAnimMontage> PistolReloadMontageAsset(TEXT("/Game/ALS/Animations/Pistol/Gun/AM_MM_Pistol_Reload"));
-	if (PistolReloadMontageAsset.Succeeded()) { PistolReloadMontage = PistolReloadMontageAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> PistolFireAnimSequenceAsset(TEXT("/Game/ALS/Animations/Pistol/Gun/Weap_Pistol_Fire"));
-	if (PistolFireAnimSequenceAsset.Succeeded()) { PistolFireAnimSequence = PistolFireAnimSequenceAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> PistolReloadAnimSequenceAsset(TEXT("/Game/ALS/Animations/Pistol/Gun/Weap_Pistol_Reload"));
-	if (PistolReloadAnimSequenceAsset.Succeeded()) { PistolReloadAnimSequence = PistolReloadAnimSequenceAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<USoundBase> PistolFireSoundAsset(TEXT("/Game/ALS/MetaSound/MSP_PistolFire"));
-	if (PistolFireSoundAsset.Succeeded()) { PistolFireSound = PistolFireSoundAsset.Object; }
-	
-	static ConstructorHelpers::FObjectFinder<UAnimMontage> RifleFireMontageAsset(TEXT("/Game/ALS/Animations/Rifle/Gun/AM_MM_Rifle_Fire"));
-	if (RifleFireMontageAsset.Succeeded()) { RifleFireMontage = RifleFireMontageAsset.Object; }
-	
-	static ConstructorHelpers::FObjectFinder<UAnimMontage> RifleReloadMontageAsset(TEXT("/Game/ALS/Animations/Rifle/Gun/AM_MM_Rifle_Reload"));
-	if (RifleReloadMontageAsset.Succeeded()) { RifleReloadMontage = RifleReloadMontageAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> RifleFireAnimSequenceAsset(TEXT("/Game/ALS/Animations/Rifle/Gun/Weap_Rifle_Fire"));
-	if (RifleFireAnimSequenceAsset.Succeeded()) { RifleFireAnimSequence = RifleFireAnimSequenceAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> RifleReloadAnimSequenceAsset(TEXT("/Game/ALS/Animations/Rifle/Gun/Weap_Rifle_Reload"));
-	if (RifleReloadAnimSequenceAsset.Succeeded()) { RifleReloadAnimSequence = RifleReloadAnimSequenceAsset.Object; }
-
-	static ConstructorHelpers::FObjectFinder<USoundBase> RifleFireSoundAsset(TEXT("/Game/ALS/MetaSound/MSP_RifleFire"));
-	if (RifleFireSoundAsset.Succeeded()) { RifleFireSound = RifleFireSoundAsset.Object; }
-
-	if (IsValid(GetMesh()))
-	{
-		static ConstructorHelpers::FObjectFinder<USkeletalMesh> BodySkeletalAsset(TEXT("/Game/ALS/Characters/Heroes/Mannequin/Meshes/SKM_Manny"));
-		if (BodySkeletalAsset.Succeeded()) { GetMesh()->SetSkeletalMesh(BodySkeletalAsset.Object); }
+	GetMesh()->SetRelativeLocation(FVector(0, 0, -90));
+	GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
 		
-		GetMesh()->SetRelativeLocation(FVector(0, 0, -90));
-		GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+	Torch         = UCharacterHelper::CreateStaticMeshWithAsset(this, TEXT("Torch"),         GetMesh(), TEXT("Torch"),        TEXT("/Game/ALS/UI/StaticMeshes/Torch/SM_Torch"));
+	TorchHolder   = UCharacterHelper::CreateStaticMeshWithAsset(this, TEXT("TorchHolder"),   GetMesh(), TEXT("TorchHolder")  ,TEXT("/Game/ALS/UI/StaticMeshes/Torch/SM_TorchHolder"));
+	PistolHolster = UCharacterHelper::CreateStaticMeshWithAsset(this, TEXT("PistolHolster"), GetMesh(), TEXT("PistolHolster"),TEXT("/Game/ALS/UI/StaticMeshes/Holster/SM_Holster_R"));
+	Helmet        = UCharacterHelper::CreateStaticMeshWithAsset(this, TEXT("Helmet"),        GetMesh(), TEXT("Helmet"),       TEXT("/Game/ALS/UI/StaticMeshes/Helmet/SM_Manny_Helmet"));
+	HealthBar     = UCharacterHelper::CreateStaticMeshWithAsset(this, TEXT("HealthBar"),     GetMesh(), TEXT("HealthBar"),    TEXT("/Game/ALS/UI/StaticMeshes/HealthBar/SM_BodyHealthBar"));
 		
-		Torch = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Torch"));
-		Torch->SetupAttachment(GetMesh(), FName("Torch"));
-		static ConstructorHelpers::FObjectFinder<UStaticMesh> TorchAsset(TEXT("/Game/ALS/UI/StaticMeshes/Torch/SM_Torch"));
-		if (TorchAsset.Succeeded()) { Torch->SetStaticMesh(TorchAsset.Object); }
+	Pistol = UCharacterHelper::CreateSkeletalMeshWithAsset(this, TEXT("Pistol"), GetMesh(), TEXT("PistolUnEquipe"),TEXT("/Game/ALS/SkeletalMeshs/Pistol/SK_Pistol"));
+	Rifle  = UCharacterHelper::CreateSkeletalMeshWithAsset(this, TEXT("Rifle"),  GetMesh(), TEXT("RifleUnEquipe"), TEXT("/Game/ALS/SkeletalMeshs/Rifle/SK_Rifle"));
+
+	PistolWidget = UCharacterHelper::CreateWidgetCompWithClass(this, TEXT("PistolWidget"), Pistol, TEXT("Widget"), TEXT("/Game/ALS/UI/Widgets/WBP_LePistolUI"), EWidgetSpace::Screen, FVector2D(400, 80));
+	RifleWidget  = UCharacterHelper::CreateWidgetCompWithClass(this, TEXT("RifleWidget"),   Rifle, TEXT("Widget"), TEXT("/Game/ALS/UI/Widgets/WBP_LeRifleUI"),  EWidgetSpace::Screen, FVector2D(400, 80));
 	
-		TorchHolder = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TorchHolder"));
-		TorchHolder->SetupAttachment(GetMesh(), FName("TorchHolder"));
-		static ConstructorHelpers::FObjectFinder<UStaticMesh> TorchHolderAsset(TEXT("/Game/ALS/UI/StaticMeshes/Torch/SM_TorchHolder"));
-		if (TorchHolderAsset.Succeeded()) { TorchHolder->SetStaticMesh(TorchHolderAsset.Object); }
-
-		PistolHolster = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PistolHolster"));
-		PistolHolster->SetupAttachment(GetMesh(), FName("PistolHolster"));
-		static ConstructorHelpers::FObjectFinder<UStaticMesh> PistolHolsterAsset(TEXT("/Game/ALS/UI/StaticMeshes/Holster/SM_Holster_R"));
-		if (PistolHolsterAsset.Succeeded()) { PistolHolster->SetStaticMesh(PistolHolsterAsset.Object); }
-
-		Helmet = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Helmet"));
-		Helmet->SetupAttachment(GetMesh(), FName("Helmet"));
-		static ConstructorHelpers::FObjectFinder<UStaticMesh> HelmetAsset(TEXT("/Game/ALS/UI/StaticMeshes/Helmet/SM_Manny_Helmet"));
-		if (HelmetAsset.Succeeded()) { Helmet->SetStaticMesh(HelmetAsset.Object); }
-
-		HealthBar = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HealthBar"));
-		HealthBar->SetupAttachment(GetMesh(), FName("HealthBar"));
-		static ConstructorHelpers::FObjectFinder<UStaticMesh> HealthBarAsset(TEXT("/Game/ALS/UI/StaticMeshes/HealthBar/SM_BodyHealthBar"));
-		if (HealthBarAsset.Succeeded()) { HealthBar->SetStaticMesh(HealthBarAsset.Object); }
-
-		Pistol = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Pistol"));
-		Pistol->SetupAttachment(GetMesh(), FName("PistolUnEquipe"));
-		static ConstructorHelpers::FObjectFinder<USkeletalMesh> PistolAsset(TEXT("/Game/ALS/SkeletalMeshs/Pistol/SK_Pistol"));
-		if (PistolAsset.Succeeded()) { Pistol->SetSkeletalMesh(PistolAsset.Object); }
-		
-		Rifle = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Rifle"));
-		Rifle->SetupAttachment(GetMesh(), FName("RifleUnEquipe"));
-		static ConstructorHelpers::FObjectFinder<USkeletalMesh> RifleAsset(TEXT("/Game/ALS/SkeletalMeshs/Rifle/SK_Rifle"));
-		if (RifleAsset.Succeeded()) { Rifle->SetSkeletalMesh(RifleAsset.Object); }
-	}
-
-	if (IsValid(Pistol))
-	{
-		PistolWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PistolWidget"));
-		PistolWidget->SetupAttachment(Pistol, FName("Widget"));
-		PistolWidget->SetWidgetSpace(EWidgetSpace::Screen);
-		PistolWidget->SetDrawSize(FVector2D(400, 80));
-		static ConstructorHelpers::FClassFinder<UUserWidget> PistolWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_LePistolUI"));
-		if (PistolWidgetAsset.Succeeded()) { PistolWidget->SetWidgetClass(PistolWidgetAsset.Class); }
-	}
+	ShieldWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("ShieldWidget"));
+	ShieldWidget->SetupAttachment(HealthBar, NAME_None);
+	ShieldWidget->SetDrawSize(FVector2D(50, 50));
+	ShieldWidget->SetRelativeLocation(FVector(-2.6f, -1.5f, 19.1f));
+	ShieldWidget->SetRelativeRotation(FRotator(0, -90, 0));
+	ShieldWidget->SetRelativeScale3D(FVector(1.0f, 0.09f, 0.09f));
 	
-	if (IsValid(Rifle))
-	{
-		RifleWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("RifleWidget"));
-		RifleWidget->SetupAttachment(Rifle, FName("Widget"));
-		RifleWidget->SetWidgetSpace(EWidgetSpace::Screen);
-		RifleWidget->SetDrawSize(FVector2D(400, 80));
-		static ConstructorHelpers::FClassFinder<UUserWidget> RifleWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_LeRifleUI"));
-		if (RifleWidgetAsset.Succeeded()) { RifleWidget->SetWidgetClass(RifleWidgetAsset.Class); }
-	}
+	LOAD_CLASS_ASSIGN(ViewPortCrossHairWidgetClass, UUserWidget, "/Game/ALS/UI/Widgets/WBP_CrossHair");
+	
+	LOAD_CLASS_ASSIGN(UnArmedAnimClass, UAnimInstance, "/Game/Le/ABP_LeUnArmed");
+	LOAD_CLASS_ASSIGN(PistolAnimClass,  UAnimInstance, "/Game/Le/ABP_LePistol");
+	LOAD_CLASS_ASSIGN(RifleAnimClass,   UAnimInstance, "/Game/Le/ABP_LeRifle");
 
-	if (IsValid(HealthBar))
-	{
-		ShieldWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("ShieldWidget"));
-		ShieldWidget->SetupAttachment(HealthBar, FName("None"));
-		ShieldWidget->SetDrawSize(FVector2D(50, 50));
-		ShieldWidget->SetRelativeLocation(FVector(-2.6f, -1.5f, 19.1f));
-		ShieldWidget->SetRelativeRotation(FRotator(0, -90, 0));
-		ShieldWidget->SetRelativeScale3D(FVector(1.0f, 0.09f, 0.09f));
-	}
-	
-	static ConstructorHelpers::FClassFinder<UUserWidget> ViewPortCrossHairWidgetAsset(TEXT("/Game/ALS/UI/Widgets/WBP_CrossHair"));
-	if (ViewPortCrossHairWidgetAsset.Succeeded()) { ViewPortCrossHairWidgetClass = ViewPortCrossHairWidgetAsset.Class; }
+	LOAD_OBJECT_ASSIGN(WeaponMovementSettingDataTable, UDataTable, "/Game/Le/DataTables/DT_WeaponMovement");
 
-	static ConstructorHelpers::FObjectFinder<UDataTable> WeaponMovementSettingAsset(TEXT("/Game/Le/DataTables/DT_WeaponMovement"));
-	if (WeaponMovementSettingAsset.Succeeded()) { WeaponMovementSettingDataTable = WeaponMovementSettingAsset.Object; }
+	LOAD_OBJECT_ASSIGN(CharacterIMC, UInputMappingContext, "/Game/ALS/Inputs/IMC_ALS");
 	
-	static ConstructorHelpers::FClassFinder<UAnimInstance> UnArmedAnimClassBP(TEXT("/Game/Le/ABP_LeUnArmed"));
-	static ConstructorHelpers::FClassFinder<UAnimInstance> PistolAnimClassBP (TEXT("/Game/Le/ABP_LePistol"));
-	static ConstructorHelpers::FClassFinder<UAnimInstance> RifleAnimClassBP  (TEXT("/Game/Le/ABP_LeRifle"));
-	if (UnArmedAnimClassBP.Class != nullptr) { UnArmedAnimClass = UnArmedAnimClassBP.Class; }
-	if (PistolAnimClassBP.Class  != nullptr) { PistolAnimClass  = PistolAnimClassBP.Class; }
-	if (RifleAnimClassBP.Class   != nullptr) { RifleAnimClass   = RifleAnimClassBP.Class; }
-	
-	static ConstructorHelpers::FObjectFinder<UInputMappingContext> CharacterIMCAsset(TEXT("/Game/ALS/Inputs/IMC_ALS"));
-	if (CharacterIMCAsset.Succeeded())
-	{
-		CharacterIMC = CharacterIMCAsset.Object;
-	}
-	static ConstructorHelpers::FObjectFinder<UInputAction> AimInputActionAsset(TEXT("/Game/ALS/Inputs/InputActions/IA_Aim"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> CrouchAsset        (TEXT("/Game/ALS/Inputs/InputActions/IA_Crouch"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> FireAsset          (TEXT("/Game/ALS/Inputs/InputActions/IA_Fire"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> InteractionAsset   (TEXT("/Game/ALS/Inputs/InputActions/IA_Interaction"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> JumpAsset          (TEXT("/Game/ALS/Inputs/InputActions/IA_Jump"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> LookAsset          (TEXT("/Game/ALS/Inputs/InputActions/IA_Look"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> MoveAsset          (TEXT("/Game/ALS/Inputs/InputActions/IA_Move"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> ReloadAsset        (TEXT("/Game/ALS/Inputs/InputActions/IA_Reload"));
-	static ConstructorHelpers::FObjectFinder<UInputAction> SwitchWeaponAsset  (TEXT("/Game/ALS/Inputs/InputActions/IA_SwitchWeapon"));
-	
-	if (AimInputActionAsset.Succeeded()) { AimIA          = AimInputActionAsset.Object; }
-	if (CrouchAsset.Succeeded())         { CrouchIA       = CrouchAsset.Object; }
-	if (FireAsset.Succeeded())           { FireIA         = FireAsset.Object; }
-	if (InteractionAsset.Succeeded())    { InteractionIA  = InteractionAsset.Object; }
-	if (JumpAsset.Succeeded())           { JumpIA         = JumpAsset.Object; }
-	if (LookAsset.Succeeded())           { LookIA         = LookAsset.Object; }
-	if (MoveAsset.Succeeded())           { MoveIA         = MoveAsset.Object; }
-	if (ReloadAsset.Succeeded())         { ReloadIA       = ReloadAsset.Object; }
-	if (SwitchWeaponAsset.Succeeded())   { SwitchWeaponIA = SwitchWeaponAsset.Object; }
+	LOAD_OBJECT_ASSIGN(AimIA,           UInputAction, "/Game/ALS/Inputs/InputActions/IA_Aim");
+	LOAD_OBJECT_ASSIGN(CrouchIA,        UInputAction, "/Game/ALS/Inputs/InputActions/IA_Crouch");
+	LOAD_OBJECT_ASSIGN(FireIA,          UInputAction, "/Game/ALS/Inputs/InputActions/IA_Fire");
+	LOAD_OBJECT_ASSIGN(InteractionIA,   UInputAction, "/Game/ALS/Inputs/InputActions/IA_Interaction");
+	LOAD_OBJECT_ASSIGN(JumpIA,          UInputAction, "/Game/ALS/Inputs/InputActions/IA_Jump");
+	LOAD_OBJECT_ASSIGN(LookIA,          UInputAction, "/Game/ALS/Inputs/InputActions/IA_Look");
+	LOAD_OBJECT_ASSIGN(MoveIA,          UInputAction, "/Game/ALS/Inputs/InputActions/IA_Move");
+	LOAD_OBJECT_ASSIGN(ReloadIA,        UInputAction, "/Game/ALS/Inputs/InputActions/IA_Reload");
+	LOAD_OBJECT_ASSIGN(SelectWeapon1IA, UInputAction, "/Game/ALS/Inputs/InputActions/IA_SelectWeapon1");
+	LOAD_OBJECT_ASSIGN(SelectWeapon2IA, UInputAction, "/Game/ALS/Inputs/InputActions/IA_SelectWeapon2");
+	LOAD_OBJECT_ASSIGN(SelectWeapon3IA, UInputAction, "/Game/ALS/Inputs/InputActions/IA_SelectWeapon3");
+	LOAD_OBJECT_ASSIGN(SwitchWeaponIA,  UInputAction, "/Game/ALS/Inputs/InputActions/IA_SwitchWeapon");
+	LOAD_OBJECT_ASSIGN(MainMenuIA,      UInputAction, "/Game/ALS/Inputs/InputActions/IA_MainMenu");
 
 	AimInterpFunction.BindDynamic  (this, &ALeCharacter::OnAimTimelineFloatReturn);
 	AimTimeLineFinished.BindDynamic(this, &ALeCharacter::OnAimTimelineFinished);
@@ -267,17 +175,20 @@ void ALeCharacter::NotifyControllerChanged()
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = UCharacterHelper::GetInputLocalPlayerSubsystem(Controller))
 	{
 		Subsystem->ClearAllMappings();
-		Subsystem->AddMappingContext(CharacterIMC, 0);
-		
-		ViewPortCrossHairWidget = CreateWidget(Cast<APlayerController>(Controller), ViewPortCrossHairWidgetClass);
-		ViewPortCrossHairWidget->AddToViewport();
+		Subsystem->AddMappingContext(CharacterIMC, 100);
+
+		if (!IsValid(ViewPortCrossHairWidget.Get()))
+		{
+			ViewPortCrossHairWidget = CreateWidget(Cast<APlayerController>(Controller), ViewPortCrossHairWidgetClass);
+			ViewPortCrossHairWidget->AddToViewport();
+		}
 	}
 	else
 	{
-		if (IsValid(ViewPortCrossHairWidget))
+		if (IsValid(ViewPortCrossHairWidget.Get()))
 		{
 			ViewPortCrossHairWidget->RemoveFromParent();
-			ViewPortCrossHairWidget->Destruct();
+			ViewPortCrossHairWidget = nullptr;
 		}
 	}
 }
@@ -321,6 +232,14 @@ void ALeCharacter::BeginPlay()
 	CombatComponent->UpdateWeaponWidget(EEquipWeapon::Rifle, false);
 	CombatComponent->SetWeaponWidgetVisibility(EEquipWeapon::Pistol, false);
 	CombatComponent->SetWeaponWidgetVisibility(EEquipWeapon::Rifle, false);
+
+	if (IsValid(AimCurve.Get()))
+	{
+		AimTimeline = FTimeline();
+		AimTimeline.AddInterpFloat(AimCurve.Get(), AimInterpFunction, FName("Alpha"));
+		AimTimeline.SetTimelineFinishedFunc(AimTimeLineFinished);
+		AimTimeline.SetLooping(false);		
+	}
 }
 
 void ALeCharacter::Tick(float InDeltaTime)
@@ -331,9 +250,9 @@ void ALeCharacter::Tick(float InDeltaTime)
 
 	if (IAnimInterface* Interface = Cast<IAnimInterface>(GetMesh()->GetAnimInstance()))
 	{
-		if ( 0.0f <= GetGroundDistance())
+		if (const float Dist = GetGroundDistance(); Dist >= 0.0f)
 		{
-			Interface->ReceiveGroundDistance(GetGroundDistance());
+			Interface->ReceiveGroundDistance(Dist);
 		}
 	}
 
@@ -355,12 +274,15 @@ void ALeCharacter::SetupPlayerInputComponent(UInputComponent* InPlayerInputCompo
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = UCharacterHelper::GetInputLocalPlayerSubsystem(Controller))
 	{
 		Subsystem->ClearAllMappings();
-		Subsystem->AddMappingContext(CharacterIMC, 0);
+		Subsystem->AddMappingContext(CharacterIMC, 100);
 	}
 	
 	UEnhancedInputComponent* PlayerInputComponent = CastChecked<UEnhancedInputComponent>(InPlayerInputComponent);
 
 	PlayerInputComponent->BindAction(SwitchWeaponIA, ETriggerEvent::Triggered, this, &ALeCharacter::Input_SwitchWeapon);
+	PlayerInputComponent->BindAction(SelectWeapon1IA,ETriggerEvent::Triggered, this, &ALeCharacter::Input_SelectWeapon1);
+	PlayerInputComponent->BindAction(SelectWeapon2IA,ETriggerEvent::Triggered, this, &ALeCharacter::Input_SelectWeapon2);
+	PlayerInputComponent->BindAction(SelectWeapon3IA,ETriggerEvent::Triggered, this, &ALeCharacter::Input_SelectWeapon3);
 	PlayerInputComponent->BindAction(LookIA,         ETriggerEvent::Triggered, this, &ALeCharacter::Input_Look);
 	PlayerInputComponent->BindAction(MoveIA,         ETriggerEvent::Triggered, this, &ALeCharacter::Input_Move);
 	PlayerInputComponent->BindAction(AimIA,          ETriggerEvent::Started,   this, &ALeCharacter::Input_AimStart);
@@ -371,6 +293,7 @@ void ALeCharacter::SetupPlayerInputComponent(UInputComponent* InPlayerInputCompo
 	PlayerInputComponent->BindAction(FireIA,         ETriggerEvent::Triggered, this, &ALeCharacter::Input_Fire);
 	PlayerInputComponent->BindAction(InteractionIA,  ETriggerEvent::Started,   this, &ALeCharacter::Input_Interaction);
 	PlayerInputComponent->BindAction(ReloadIA,       ETriggerEvent::Started,   this, &ALeCharacter::Input_Reload);
+	PlayerInputComponent->BindAction(MainMenuIA,     ETriggerEvent::Triggered, this, &ALeCharacter::Input_MainMenu);
 }
 
 #pragma region - CharacterInter Interface
@@ -498,13 +421,7 @@ void ALeCharacter::AimStart()
 	default: break;
 	}
 	
-	if (IsValid(AimCurve))
-	{
-		AimTimeline.AddInterpFloat(AimCurve, AimInterpFunction, FName("Alpha"));
-		AimTimeline.SetTimelineFinishedFunc(AimTimeLineFinished);
-		AimTimeline.SetLooping(false);
-		AimTimeline.Play();
-	}
+	AimTimeline.Play();
 }
 
 void ALeCharacter::AimEnd()
@@ -517,13 +434,7 @@ void ALeCharacter::AimEnd()
 	default: break;
 	}
 
-	if (IsValid(AimCurve))
-	{
-		AimTimeline.AddInterpFloat(AimCurve, AimInterpFunction, FName("Alpha"));
-		AimTimeline.SetTimelineFinishedFunc(AimTimeLineFinished);
-		AimTimeline.SetLooping(false);
-		AimTimeline.Reverse();
-	}
+	AimTimeline.Reverse();
 }
 
 void ALeCharacter::Server_DoParkour_Implementation()
@@ -535,6 +446,27 @@ void ALeCharacter::Multicast_DoParkour_Implementation()
 {
 	if (IsLocallyControlled()) return;
 		Parkour->DoParkour();
+}
+
+void ALeCharacter::Process_SelectWeapon(const EEquipWeapon InWeapon)
+{
+	ChangeWeapon(InWeapon);
+
+	PistolWidget->SetVisibility(false);
+	RifleWidget->SetVisibility(false);
+
+	switch (InWeapon)
+	{
+	case EEquipWeapon::Pistol:
+		PistolWidget->SetVisibility(true);
+		break;
+	case EEquipWeapon::Rifle:
+		RifleWidget->SetVisibility(true);
+		break;
+	default: break;
+	}
+	
+	CombatComponent->ProcessWidgetByAnim();
 }
 
 void ALeCharacter::ChangeWeapon(const EEquipWeapon InWeapon)
@@ -615,25 +547,32 @@ void ALeCharacter::OnAimTimelineFinished()
 	CombatComponent->ProcessWidgetByAnim();
 }
 
-void ALeCharacter::Input_SwitchWeapon(const FInputActionValue& InValue)
+void ALeCharacter::Input_SwitchWeapon()
 {
-	if (const int32 InputValue = static_cast<int32>(InValue.Get<float>()))
-	{
-		ChangeWeapon(static_cast<EEquipWeapon>(InputValue - 1));
-	}
+	Process_SelectWeapon(ToggleEnum(EquipWeapon));
+}
 
-	UpdateMoveType(CurrentMoveType);
+void ALeCharacter::Input_SelectWeapon1()
+{
+	Process_SelectWeapon(EEquipWeapon::UnArmed);
+}
 
-	PistolWidget->SetVisibility(false);
-	RifleWidget->SetVisibility(false);
-	
-	CombatComponent->ProcessWidgetByAnim();
+void ALeCharacter::Input_SelectWeapon2()
+{
+	Process_SelectWeapon(EEquipWeapon::Pistol);
+}
+
+void ALeCharacter::Input_SelectWeapon3()
+{
+	Process_SelectWeapon(EEquipWeapon::Rifle);
 }
 
 void ALeCharacter::Input_Look(const FInputActionValue& InValue)
 {
 	AddControllerYawInput  (InValue.Get<FVector2D>().X);
 	AddControllerPitchInput(InValue.Get<FVector2D>().Y);
+
+	// LOG_INFO("Input_Look: X=%.1f, Y=%.1f", InValue.Get<FVector2D>().X, InValue.Get<FVector2D>().Y);
 }
 
 void ALeCharacter::Input_Move(const FInputActionValue& InValue)
@@ -729,4 +668,15 @@ void ALeCharacter::Input_Reload()
 void ALeCharacter::Input_Interaction()
 {
 	// if (!bCanInteract) return;
+}
+
+void ALeCharacter::Input_MainMenu()
+{
+	LOG_INFO("Input_MainMenu");
+	
+	ALePlayerController* PC = Cast<ALePlayerController>(GetController());
+	if (PC && PC->IsLocalController())
+	{
+		PC->ToggleMainMenu();
+	}
 }

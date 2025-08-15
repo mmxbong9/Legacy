@@ -194,6 +194,8 @@ void UCombatComponent::Reload()
 	if (!IsValid(AnimInstance)) return;
 
 	FWeaponData* WeaponData = WeaponDataMap.Find(LeCharacter->GetCurrentEquipWeapon());
+
+	if (!WeaponData) return;
 	
 	if (AnimInstance->Montage_IsPlaying(WeaponData->FireMontage)) return;
 	if (WeaponData->ClipAmount < 1) return;
