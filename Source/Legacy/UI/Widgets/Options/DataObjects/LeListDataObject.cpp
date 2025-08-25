@@ -70,7 +70,7 @@ void ULeListDataObject::NotifyListDataModified(ULeListDataObject* ModifiedData, 
 {
 	OnListDataModified.Broadcast(ModifiedData, ModifyReason);
 
-	if (bShouldApplyChangeImmediatly)
+	if (bShouldApplyChangeImmediately)
 	{
 		ULegacyGameUserSettings::Get()->ApplySettings(true);
 	}

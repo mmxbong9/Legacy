@@ -3,7 +3,7 @@
 #include "FrontendSubsystem.h"
 
 #include "Engine/AssetManager.h"
-#include "Legacy/Settings/LegacyGameplayTags.h"
+#include "Legacy/GameplayTags/UIGameplayTags.h"
 #include "Legacy/UI/Widgets/LeActivatableWidget.h"
 #include "Legacy/Helpers/DebugHelper.h"
 #include "Legacy/Helpers/LegacyFunctionLibrary.h"
@@ -49,7 +49,7 @@ void UFrontendSubsystem::UnregisterPrimaryLayoutWidget()
 	// 2) 메인 메뉴 스택 비우기 (뷰포트 부착 여부와 무관)
 	if (IsValid(Layout))
 	{
-		if (UCommonActivatableWidgetContainerBase* Stack = Layout->FindWidgetStackByTag(LegacyGameplayTags::WidgetStack_MainMenu))
+		if (UCommonActivatableWidgetContainerBase* Stack = Layout->FindWidgetStackByTag(UIGameplayTags::WidgetStack_MainMenu))
 		{
 			Stack->ClearWidgets(); // 스택 Pop 및 Activatable 종료
 		}
@@ -101,7 +101,7 @@ void UFrontendSubsystem::PushSoftWidgetToStackAsync(
 	);
 }
 
-void UFrontendSubsystem::PushConfirmScreenToPopupStackAsync(EConfirmScreenType InScreenType, const FText& InScreenTitle,
+void UFrontendSubsystem::PushConfirmScreenToModalStackAsync(EConfirmScreenType InScreenType, const FText& InScreenTitle,
 	const FText& InScreenMessage, TFunction<void(EConfirmScreenButtonType)> ButtonClickedCallback)
 {
 	ULeConfirmInfoObject* CreatedInfoObject = nullptr;
@@ -123,8 +123,8 @@ void UFrontendSubsystem::PushConfirmScreenToPopupStackAsync(EConfirmScreenType I
 	check(CreatedInfoObject);
 
 	PushSoftWidgetToStackAsync(
-		LegacyGameplayTags::WidgetStack_Popup,
-		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(LegacyGameplayTags::Widget_ConfirmScreen),
+		UIGameplayTags::WidgetStack_Modal,
+		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(UIGameplayTags::Widget_ConfirmScreen),
 		[CreatedInfoObject, ButtonClickedCallback](EAsyncPushWidgetState InPushState, ULeActivatableWidget* PushedWidget)
 		{
 			if (InPushState == EAsyncPushWidgetState::OnCreatedBeforePush)
@@ -136,14 +136,14 @@ void UFrontendSubsystem::PushConfirmScreenToPopupStackAsync(EConfirmScreenType I
 	);
 }
 
-void UFrontendSubsystem::RemoveActivatedPopup()
+void UFrontendSubsystem::RemoveActivatedModal()
 {
-	UCommonActivatableWidgetContainerBase* WidgetStack = CreatedPrimaryLayout->FindWidgetStackByTag(LegacyGameplayTags::WidgetStack_Popup);
+	UCommonActivatableWidgetContainerBase* WidgetStack = CreatedPrimaryLayout->FindWidgetStackByTag(UIGameplayTags::WidgetStack_Modal);
 	
 	check(WidgetStack);
 
-	if (UCommonActivatableWidget* ActivePopupWidget = WidgetStack->GetActiveWidget())
+	if (UCommonActivatableWidget* ActiveModalWidget = WidgetStack->GetActiveWidget())
 	{
-		ActivePopupWidget->DeactivateWidget();
+		ActiveModalWidget->DeactivateWidget();
 	}
 }

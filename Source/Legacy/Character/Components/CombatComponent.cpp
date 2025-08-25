@@ -1,7 +1,8 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// bong9 All Rights Reserved
 
 #include "CombatComponent.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Components/WidgetComponent.h"
@@ -9,20 +10,242 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "NiagaraDataInterfaceArrayFunctionLibrary.h"
 #include "Legacy/Legacy.h"
+#include "Legacy/Actor/LeCollision.h"
+#include "Legacy/Actor/LeWeapon.h"
+#include "Legacy/AnimNotify/LeCollisionActivationData.h"
 #include "Legacy/Character/LeCharacter.h"
+#include "Legacy/Global/GlobalUtil.h"
 #include "Legacy/Interfaces/CharacterInterface.h"
 #include "Legacy/Interfaces/WidgetInterface.h"
-#include "Legacy/SubSystems/AsyncSpawnSubsystem.h"
+#include "Legacy/Item/LeWeaponItem.h"
 #include "Legacy/Types/LeTypes.h"
+#include "Net/UnrealNetwork.h"
 
 UCombatComponent::UCombatComponent()
 {
-	bWantsInitializeComponent = true;
 	PrimaryComponentTick.bCanEverTick = true;
-	
+	bWantsInitializeComponent = true;
 	bCanFire = true;
-
 	bUseDebugFireTrace = false;
+
+	SetIsReplicatedByDefault(true);
+}
+
+void UCombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UCombatComponent, MainHandWeapon);
+	DOREPLIFETIME(UCombatComponent, OffHandWeapon);
+}
+
+bool UCombatComponent::SpawnAndInitWeapons()
+{
+	if (WeaponItemClasses.IsEmpty() || !GetOwner() || !GetOwner()->HasAuthority()) return false;
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = GetOwner();
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	
+	for (const TSubclassOf<ULeWeaponItem>& WeaponItemClass : WeaponItemClasses)
+	{
+		if (!IsValid(WeaponItemClass)) continue;
+
+		if (ULeWeaponItem* WeaponItem = NewObject<ULeWeaponItem>(this, WeaponItemClass))
+		{
+			if (ALeWeapon* Weapon = GetWorld()->SpawnActor<ALeWeapon>(WeaponItem->WeaponClass, SpawnParams))
+			{
+				Weapon->SetReplicates(true);
+				HandleEquipWeapon(Weapon);
+			}
+		}
+	}
+
+	return true;
+}
+
+ALeCollision* UCombatComponent::SpawnAndActivateCollision(const FCollisionActivationData& CollisionData)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority() || CollisionData.EffectClasses.IsEmpty()) return nullptr;
+
+	if (ALeCharacter* OwnerCharacter = Cast<ALeCharacter>(GetOwner()))
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = OwnerCharacter;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+		FName SocketName = CollisionData.GetSocketName(CollisionData);
+		FTransform SpawnTransform = OwnerCharacter->GetMesh()->GetSocketTransform(SocketName);
+		ALeCollision* Collision = GetWorld()->SpawnActorDeferred<ALeCollision>(
+			CollisionActorClass,
+			SpawnTransform,
+			OwnerCharacter,
+			OwnerCharacter,
+			ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
+		);
+
+		if (Collision)
+		{
+			Collision->SetOwner(OwnerCharacter);
+			Collision->Initialize(CollisionData);
+			Collision->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+			Collision->FinishSpawning(SpawnTransform);
+
+			return Collision;
+		}
+	}
+
+	return nullptr;
+}
+
+void UCombatComponent::BindTagChangedCallbacks()
+{
+	if (ULeAbilitySystemComponent* ASC = Cast<ULeAbilitySystemComponent>(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner())))
+	{
+		for (const FEffectHandlingInfo& TagToBind : TagBindings)
+		{
+			ASC->RegisterGameplayTagEvent(TagToBind.TriggerTag, EGameplayTagEventType::AnyCountChange).AddUObject(this, &ThisClass::HandleTagsChanged);
+		}
+	}
+}
+
+void UCombatComponent::ActivateAbilities(FEffectHandlingInfo& Info, FGameplayTag Tag, ULeAbilitySystemComponent* ASC)
+{
+	if (Info.AbilitySettings.AbilityToActivate.IsValid())
+	{
+		auto ActivateAbility = [ASC, Info]
+		{
+			ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(Info.AbilitySettings.AbilityToActivate));
+		};
+
+		FTimerHandle Handle = TimerHandlesAbilities.FindOrAdd(Tag);
+		ExecuteWithDelay(ActivateAbility, Info.AbilitySettings.AbilityActivationDelay, Handle);
+	}
+}
+
+void UCombatComponent::RemoveAbilities(FEffectHandlingInfo& Info, FGameplayTag Tag, ULeAbilitySystemComponent* ASC)
+{
+	if (Info.EffectSettings.EffectsToRemove.Num() > 0)
+	{
+		auto RemoveEffects = [ASC, Info]
+		{
+			for (const TSubclassOf<UGameplayEffect>& EffectClass : Info.EffectSettings.EffectsToRemove)
+			{
+				if (EffectClass && ASC)
+				{
+					FGameplayEffectQuery Query;
+					Query.EffectDefinition = EffectClass;
+					ASC->RemoveActiveEffects(Query);
+				}
+			}
+		};
+
+		FTimerHandle Handle = TimerHandlesRemove.FindOrAdd(Tag);
+		ExecuteWithDelay(RemoveEffects, Info.EffectSettings.EffectRemovalDelay, Handle);
+	}
+}
+
+void UCombatComponent::ApplyEffects(FEffectHandlingInfo& Info, FGameplayTag Tag, ULeAbilitySystemComponent* ASC)
+{
+	if (Info.EffectSettings.EffectToApply.Num() > 0)
+	{
+		auto ApplyEffects = [this, ASC, Info]
+		{
+			for (const TSubclassOf<UGameplayEffect>& Effect : Info.EffectSettings.EffectToApply)
+			{
+				if (Effect && ASC)
+				{
+					FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+					EffectContext.AddSourceObject(GetOwner());
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(Effect, 1.f, EffectContext);
+					if (SpecHandle.IsValid())
+					{
+						ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
+			}
+		};
+
+		FTimerHandle Handle = TimerHandlesApply.FindOrAdd(Tag);
+		ExecuteWithDelay(ApplyEffects, Info.EffectSettings.EffectApplicationDelay, Handle);
+	}
+}
+
+template <typename Func>
+void UCombatComponent::ExecuteWithDelay(Func InFunction, float Delay, FTimerHandle& TimerHandle)
+{
+	if (Delay == 0) { InFunction(); return; }
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(TimerHandle);
+		FTimerDelegate TimerDelegate;
+		TimerDelegate.BindLambda(InFunction);
+		World->GetTimerManager().SetTimer(TimerHandle, TimerDelegate, Delay, false);
+	}
+}
+
+void UCombatComponent::HandleEquipWeapon(ALeWeapon* Weapon)
+{
+	if (!IsValid(Weapon)) return;
+
+	if (GetOwner() && GetOwner()->HasAuthority())
+	{
+		MainHandWeapon = Weapon;
+	}
+	Weapon->AttachToCharacter(EnumUtil::GetEnumDisplayNameAsFName(ECollisionSocket::RightWeapon));
+}
+
+void UCombatComponent::HandleTagsChanged(FGameplayTag Tag, int32 NewCount)
+{
+	// UE_LOG(LogTemp, Warning, TEXT("Tag: %s, NewCount: %d"), *Tag.ToString(), NewCount);
+	if (ULeAbilitySystemComponent* ASC = Cast<ULeAbilitySystemComponent>(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner())))
+	{
+		bool bTagAdded = NewCount > 0;
+
+		for (FEffectHandlingInfo& TagBinding : TagBindings)
+		{
+			if (!Tag.MatchesTag(TagBinding.TriggerTag)) continue;
+
+			switch (TagBinding.ApplicationPolicy)
+			{
+			case EEffectApplicationPolicy::ApplyOnAdd:
+				if (!bTagAdded) continue;
+				RemoveAbilities  (TagBinding, Tag, ASC);
+				ApplyEffects     (TagBinding, Tag, ASC);
+				ActivateAbilities(TagBinding, Tag, ASC);
+				break;
+			case EEffectApplicationPolicy::ApplyOnRemove:
+				if (bTagAdded) continue;
+				RemoveAbilities  (TagBinding, Tag, ASC);
+				ApplyEffects     (TagBinding, Tag, ASC);
+				ActivateAbilities(TagBinding, Tag, ASC);
+				break;
+			case EEffectApplicationPolicy::ApplyOnBoth:
+				RemoveAbilities  (TagBinding, Tag, ASC);
+				ApplyEffects     (TagBinding, Tag, ASC);
+				ActivateAbilities(TagBinding, Tag, ASC);
+				break;
+			default: break;
+			}
+		}
+	}
+}
+
+void UCombatComponent::OnRep_MainHandWeapon()
+{
+	if (MainHandWeapon)
+	{
+		HandleEquipWeapon(MainHandWeapon.Get());
+	}
+}
+
+void UCombatComponent::OnRep_OffHandWeapon()
+{
+	if (OffHandWeapon)
+	{
+		HandleEquipWeapon(OffHandWeapon.Get());
+	}
 }
 
 void UCombatComponent::BeginPlay()
@@ -68,7 +291,7 @@ void UCombatComponent::InitializeWeaponData()
 	RifleData.SkeletalMesh       = LeCharacter->GetRifleSkeletalMesh();
 	WeaponDataMap.Add(EEquipWeapon::Rifle, RifleData);
 	
-	ForEachEnum<EEquipWeapon>([this](const EEquipWeapon InWeaponType)
+	EnumUtil::ForEachEnum<EEquipWeapon>([this](const EEquipWeapon InWeaponType)
 	{
 		if (WeaponDataMap.Find(InWeaponType))
 			checkf(WeaponDataMap.Find(InWeaponType), TEXT("WeaponData by weapon type must always be paired."));
@@ -209,7 +432,7 @@ void UCombatComponent::Reload()
 		WeaponData->BulletAmount = WeaponData->ClipSize;
 		
 		FString Log = FString::Format(TEXT("{0} Reload Complete : ClipAmount {1}, BulletAmount {2}"),
-			{ GetEnumNameString(LeCharacter->GetCurrentEquipWeapon()),WeaponData->ClipAmount, WeaponData->BulletAmount });
+			{ EnumUtil::GetEnumNameAsString(LeCharacter->GetCurrentEquipWeapon()),WeaponData->ClipAmount, WeaponData->BulletAmount });
 		LOG_NET_FUNC(Log);
 
 		UpdateWeaponWidget(LeCharacter->GetCurrentEquipWeapon());
@@ -220,7 +443,7 @@ void UCombatComponent::Reload()
 	AnimInstance->Montage_Play(WeaponData->ReloadMontage);
 	AnimInstance->Montage_SetBlendingOutDelegate(BlendOutDelegate, WeaponData->ReloadMontage);
 	
-	if (IsValid(WeaponData->SkeletalMesh) && IsValid(WeaponData->ReloadAnimSequence))
+	if (IsValid(WeaponData->SkeletalMesh.Get()) && IsValid(WeaponData->ReloadAnimSequence))
 	{
 		WeaponData->SkeletalMesh->PlayAnimation(WeaponData->ReloadAnimSequence, false);
 	}
@@ -306,13 +529,13 @@ void UCombatComponent::PlayImpactSound(const FVector& InImpactLocation, const UP
 		case PhysicalSurfaces::Concrete:
 		case PhysicalSurfaces::Character:
 		default: ImpactSounds = LeCharacter->GetConcreteImpactSounds();
-			break;	
+			break;
 		}
 	}
 	
 	for (const auto& Sound : ImpactSounds)
 	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), Sound, InImpactLocation);				
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), Sound.Get(), InImpactLocation);				
 	}
 }
 

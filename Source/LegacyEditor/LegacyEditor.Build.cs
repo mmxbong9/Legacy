@@ -32,6 +32,12 @@ public class LegacyEditor : ModuleRules
                 "GraphEditor",
                 "PropertyEditor"
             });
+
+            PrivateDependencyModuleNames.AddRange(new string[] {
+                "Core", "CoreUObject", "Engine",
+                "Json", "JsonUtilities",
+                "UnrealEd", "Slate", "SlateCore", "EditorStyle", "ToolMenus"
+            });
         }
     }
 }

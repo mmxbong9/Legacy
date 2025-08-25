@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "Legacy/Global/GlobalUtil.h"
 #include "LeTypes.generated.h"
 
 class UAnimMontage;
@@ -70,6 +71,7 @@ enum class EEquipWeapon : uint8
 	UnArmed = 0 UMETA(DisplayName="UnArmed"),
 	Pistol  = 1 UMETA(DisplayName="Pistol"),
 	Rifle   = 2 UMETA(DisplayName="Rifle"),
+	Hammer  = 3 UMETA(DisplayName="Hammer"),
 	Max         UMETA(Hidden)
 };
 
@@ -82,38 +84,16 @@ enum class EMoveType : uint8
 	Max           UMETA(Hidden)
 };
 
-template <typename TEnum>
-FString GetEnumNameString(TEnum EnumValue)
-{
-	static_assert(TIsEnum<TEnum>::Value, "Only works with enum types");
-
-	const UEnum* EnumPtr = StaticEnum<TEnum>();
-	if (!EnumPtr)
-	{
-		return FString("InvalidEnum");
-	}
-
-	// EEquipWeapon::Rifle → Rifle
-	const FString FullName  = EnumPtr->GetNameByValue(static_cast<int64>(EnumValue)).ToString();
-	const FString Prefix    = EnumPtr->GetName(); // e.g., "EEquipWeapon"
-	const FString SearchKey = Prefix + TEXT("::");
-
-	if (FullName.StartsWith(SearchKey))
-	{
-		return FullName.RightChop(SearchKey.Len());
-	}
-
-	return FullName;
-}
-
 USTRUCT(BlueprintType)
 struct FWeaponSocketNames : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName PistolUnEquipe = FName("PistolUnEquipe");
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName RifleUnEquipe  = FName("RifleUnEquipe");
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName WeaponEquiped  = FName("WeaponEquiped");
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName PistolUnEquipe      = FName("PistolUnEquipe");
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName RifleUnEquipe       = FName("RifleUnEquipe");
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName WeaponEquiped       = FName("WeaponEquiped");
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName HammerWeaponEquip   = FName("HammerEquip");
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName HammerWeaponUnequip = FName("HammerUnequip");
 };
 
 USTRUCT(BlueprintType)
@@ -130,8 +110,8 @@ struct FWeaponMovementSettings : public FTableRowBase
 	
 	static bool GetMovementSetting(const UDataTable* InDataTable, const EEquipWeapon InWeaponType, const EMoveType InMoveType, FWeaponMovementSettings& OutSettings)
 	{
-		const FString WeaponStr = GetEnumNameString(InWeaponType);
-		const FString MoveStr   = GetEnumNameString(InMoveType);
+		const FString WeaponStr = EnumUtil::GetEnumNameAsString(InWeaponType);
+		const FString MoveStr   = EnumUtil::GetEnumNameAsString(InMoveType);
 
 		const FString RowString = FString::Printf(TEXT("%s_%s"), *WeaponStr, *MoveStr);
 		const FName RowName(*RowString);
@@ -145,41 +125,6 @@ struct FWeaponMovementSettings : public FTableRowBase
 		return false;
 	}
 };
-
-template <typename TEnum>
-void ForEachEnum(TFunctionRef<void(TEnum)> Func)
-{
-	static_assert(TIsEnum<TEnum>::Value, "TEnum must be an enum type");
-
-	const UEnum* EnumPtr = StaticEnum<TEnum>();
-	if (!EnumPtr) return;
-
-	const int32 EnumCount = EnumPtr->NumEnums();
-
-	// 마지막 항목(Max)은 Hidden 처리된 항목일 가능성이 높으므로 제외
-	for (int32 i = 0; i < EnumCount - 1; ++i)
-	{
-		int64 Value = EnumPtr->GetValueByIndex(i);
-		Func(static_cast<TEnum>(Value));
-	}
-}
-
-template<typename TEnum>
-constexpr TEnum ToggleEnum(TEnum Current)
-{
-	static_assert(std::is_enum_v<TEnum>, "ToggleEnum requires an enum type.");
-
-	using Underlying = std::underlying_type_t<TEnum>;
-
-	Underlying NextIndex = static_cast<Underlying>(Current) + 1;
-
-	if (NextIndex >= static_cast<Underlying>(TEnum::Max))
-	{
-		NextIndex = 0;
-	}
-
-	return static_cast<TEnum>(NextIndex);
-}
 
 namespace CollisionChannelNames
 {

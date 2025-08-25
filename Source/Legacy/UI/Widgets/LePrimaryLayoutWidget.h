@@ -24,7 +24,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, meta=(BindWidget), Category=WidgetStacks) TObjectPtr<UCommonActivatableWidgetStack> MainMenuStack;
 	UPROPERTY(BlueprintReadOnly, meta=(BindWidget), Category=WidgetStacks) TObjectPtr<UCommonActivatableWidgetStack> GameHudStack;
 	UPROPERTY(BlueprintReadOnly, meta=(BindWidget), Category=WidgetStacks) TObjectPtr<UCommonActivatableWidgetStack> GameMenuStack;
-	UPROPERTY(BlueprintReadOnly, meta=(BindWidget), Category=WidgetStacks) TObjectPtr<UCommonActivatableWidgetStack> PopupStack;
+	UPROPERTY(BlueprintReadOnly, meta=(BindWidget), Category=WidgetStacks) TObjectPtr<UCommonActivatableWidgetStack> ModalStack;
 
 protected:
 	UFUNCTION(BlueprintCallable)
@@ -35,5 +35,6 @@ protected:
 	//- UUserWidget
 	
 private:
+	UPROPERTY(Transient)
 	TMap<FGameplayTag, UCommonActivatableWidgetContainerBase*> RegisteredWidgetStackMap;
 };

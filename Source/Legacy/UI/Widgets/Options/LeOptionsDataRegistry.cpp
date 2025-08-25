@@ -12,8 +12,8 @@
 #include "DataObjects/LeListDataObject_String.h"
 #include "DataObjects/LeListDataObject_StringResolution.h"
 #include "Internationalization/StringTableRegistry.h"
-#include "Legacy/Settings//LegacyGameplayTags.h"
-#include "Legacy/Settings//LegacyGameUserSettings.h"
+#include "Legacy/GameplayTags/UIGameplayTags.h"
+#include "Legacy/Settings/LegacyGameUserSettings.h"
 #include "Legacy/Helpers/DebugHelper.h"
 #include "Legacy/Helpers/LegacyFunctionLibrary.h"
 
@@ -122,7 +122,7 @@ void ULeOptionsDataRegistry::InitGameplayCollectionTab()
 		ULeListDataObject_String* TestItem = NewObject<ULeListDataObject_String>();
 		TestItem->SetDataID(FName("TestItem"));
 		TestItem->SetDataDisplayName(FText::FromString(TEXT("Test Image Item")));
-		TestItem->SetSoftDescriptionImage(ULegacyFunctionLibrary::GetOptionsSoftImageByTag(LegacyGameplayTags::Image_TestImage));
+		TestItem->SetSoftDescriptionImage(ULegacyFunctionLibrary::GetOptionsSoftImageByTag(UIGameplayTags::Image_TestImage));
 		TestItem->SetDescriptionRichText(FText::FromString(TEXT("The image to display can bw specified in the project settings. It can bw anything the developer assigned in there")));
 		
 		Collection->AddChildListData(TestItem);

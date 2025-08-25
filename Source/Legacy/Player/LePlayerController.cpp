@@ -1,21 +1,19 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// bong9 All Rights Reserved
 
 #include "LePlayerController.h"
 
 #include "CommonActivatableWidget.h"
 #include "Blueprint/UserWidget.h"
-#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Legacy/Character/LeCharacter.h"
 #include "Legacy/UI/Widgets/LePrimaryLayoutWidget.h"
-#include "Legacy/Settings/LegacyGameplayTags.h"
+#include "Legacy/GameplayTags/UIGameplayTags.h"
 #include "Legacy/Settings/LegacyGameUserSettings.h"
 #include "Legacy/Helpers/LegacyFunctionLibrary.h"
 #include "Legacy/SubSystems/FrontendSubsystem.h"
 #include "Legacy/UI/ASyncActions/AsyncAction_PushSoftWidget.h"
-#include "Legacy/UI/Widgets/LeActivatableWidget.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 
 ALePlayerController::ALePlayerController()
@@ -66,8 +64,8 @@ void ALePlayerController::OnLoadingScreenDeactivated_Implementation()
 	}
 	
 	if (UAsyncAction_PushSoftWidget* Action = UAsyncAction_PushSoftWidget::PushSoftWidget(this, this,
-		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(LegacyGameplayTags::Widget_PressAnyKeyScreen),
-		LegacyGameplayTags::WidgetStack_MainMenu, true))
+		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(UIGameplayTags::Widget_PressAnyKeyScreen),
+		UIGameplayTags::WidgetStack_MainMenu, true))
 	{
 		Action->Activate();
 	}
@@ -87,7 +85,7 @@ void ALePlayerController::ToggleMainMenu()
 	// 인게임 플레이시 메인메뉴가 떠있다면 제거 하고 게임모드로 변경.
 	if (ULePrimaryLayoutWidget* PrimaryLayout = UFrontendSubsystem::Get(this)->GetCreatedPrimaryLayout() )
 	{
-		if (UCommonActivatableWidgetContainerBase* WidgetStack = PrimaryLayout->FindWidgetStackByTag(LegacyGameplayTags::WidgetStack_MainMenu))
+		if (UCommonActivatableWidgetContainerBase* WidgetStack = PrimaryLayout->FindWidgetStackByTag(UIGameplayTags::WidgetStack_MainMenu))
 		{
 			if (UCommonActivatableWidget* ActivatableWidget = WidgetStack->GetActiveWidget())
 			{
@@ -125,8 +123,8 @@ void ALePlayerController::ToggleMainMenu()
 	}
 	
 	if (UAsyncAction_PushSoftWidget* Action = UAsyncAction_PushSoftWidget::PushSoftWidget(this, this,
-		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(LegacyGameplayTags::Widget_MainMenuScreen),
-		LegacyGameplayTags::WidgetStack_MainMenu, true, false))
+		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(UIGameplayTags::Widget_MainMenuScreen),
+		UIGameplayTags::WidgetStack_MainMenu, true, false))
 	{
 		Action->Activate();
 		

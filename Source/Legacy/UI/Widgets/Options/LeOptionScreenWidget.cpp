@@ -109,7 +109,7 @@ void ULeOptionScreenWidget::OnResetBoundActionTriggered()
 
 	const FString SelectedTabButtonName = CastChecked<ULeCommonButtonBase>(SelectedTabButton)->GetButtonDisplayText().ToString();
 	
-	UFrontendSubsystem::Get(this)->PushConfirmScreenToPopupStackAsync(
+	UFrontendSubsystem::Get(this)->PushConfirmScreenToModalStackAsync(
 		EConfirmScreenType::YesNo,
 		FText::FromString(TEXT("Reset")),
 		FText::FromString(TEXT("Are you sure you want to reset all the setting under the ") + SelectedTabButtonName + TEXT(" tab.")),

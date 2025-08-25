@@ -1,7 +1,7 @@
 // bong9 All Rights Reserved
 
 #include "LePrimaryLayoutWidget.h"
-#include "Legacy/Settings/LegacyGameplayTags.h"
+#include "Legacy/GameplayTags/UIGameplayTags.h"
 #include "Legacy/Helpers/DebugHelper.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 
@@ -27,8 +27,8 @@ void ULePrimaryLayoutWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	RegisterWidgetStack(LegacyGameplayTags::WidgetStack_MainMenu, MainMenuStack);
-	RegisterWidgetStack(LegacyGameplayTags::WidgetStack_GameHud,  GameHudStack);
-	RegisterWidgetStack(LegacyGameplayTags::WidgetStack_GameMenu, GameMenuStack);
-	RegisterWidgetStack(LegacyGameplayTags::WidgetStack_Popup,    PopupStack);
+	RegisterWidgetStack(UIGameplayTags::WidgetStack_MainMenu, MainMenuStack);
+	RegisterWidgetStack(UIGameplayTags::WidgetStack_GameHud,  GameHudStack);
+	RegisterWidgetStack(UIGameplayTags::WidgetStack_GameMenu, GameMenuStack);
+	RegisterWidgetStack(UIGameplayTags::WidgetStack_Modal,    ModalStack);
 }

@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// bong9 All Rights Reserved
 
 #pragma once
 
@@ -22,7 +22,7 @@ class LEGACY_API ALePlayerController : public APlayerController, public ILegacyL
 
 public:
 	ALePlayerController();
-
+	
 	//~ Begin ILegacyLoadingScreenInterface Interface
 	virtual void OnLoadingScreenActivated_Implementation() override;
 	virtual void OnLoadingScreenDeactivated_Implementation() override;

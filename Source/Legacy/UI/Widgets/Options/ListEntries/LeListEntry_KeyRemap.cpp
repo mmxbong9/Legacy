@@ -2,7 +2,7 @@
 
 #include "LeListEntry_KeyRemap.h"
 
-#include "Legacy/Settings/LegacyGameplayTags.h"
+#include "Legacy/GameplayTags/UIGameplayTags.h"
 #include "Legacy/Helpers/DebugHelper.h"
 #include "Legacy/Helpers/LegacyFunctionLibrary.h"
 #include "Legacy/SubSystems/FrontendSubsystem.h"
@@ -42,8 +42,8 @@ void ULeListEntry_KeyRemap::OnRemapKeyButtonClicked()
 	SelectThisEntryWidget();
 	
 	UFrontendSubsystem::Get(this)->PushSoftWidgetToStackAsync(
-		LegacyGameplayTags::WidgetStack_Popup,
-		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(LegacyGameplayTags::Widget_KeyRemapScreen),
+		UIGameplayTags::WidgetStack_Modal,
+		ULegacyFunctionLibrary::GetSoftWidgetClassByTag(UIGameplayTags::Widget_KeyRemapScreen),
 		[this](EAsyncPushWidgetState PushState, ULeActivatableWidget* PushedWidget)
 		{
 			if (PushState == EAsyncPushWidgetState::OnCreatedBeforePush)
@@ -73,7 +73,7 @@ void ULeListEntry_KeyRemap::OnResetKeyBindingButtonClicked()
 	// Check if the current key is already the default key. Display an OK screen that says this is already the default to player
 	if (!CachedOwningKeyRemapDataObject->CanResetBackToDefaultValue())
 	{
-		UFrontendSubsystem::Get(this)->PushConfirmScreenToPopupStackAsync(
+		UFrontendSubsystem::Get(this)->PushConfirmScreenToModalStackAsync(
 			EConfirmScreenType::Ok,
 			FText::FromString(TEXT("Reset Key Mapping")),
 			FText::FromString(TEXT("The key binding for ") + CachedOwningKeyRemapDataObject->GetDataDisplayName().ToString() + TEXT(" is already set to default")),
@@ -84,7 +84,7 @@ void ULeListEntry_KeyRemap::OnResetKeyBindingButtonClicked()
 	}
 	
 	// Reset the key binding back to default
-	UFrontendSubsystem::Get(this)->PushConfirmScreenToPopupStackAsync(
+	UFrontendSubsystem::Get(this)->PushConfirmScreenToModalStackAsync(
 		EConfirmScreenType::YesNo,
 		FText::FromString(TEXT("Reset Key Mapping")),
 		FText::FromString(TEXT("Are you sure you want to key binding for ") + CachedOwningKeyRemapDataObject->GetDataDisplayName().ToString() + TEXT(" ?")),
@@ -108,7 +108,7 @@ void ULeListEntry_KeyRemap::OnKeyToRemapPressed(const FKey& PressedKey)
 
 void ULeListEntry_KeyRemap::OnKeyToRemapCanceled(const FString& CanceledReason)
 {
-	UFrontendSubsystem::Get(this)->PushConfirmScreenToPopupStackAsync(
+	UFrontendSubsystem::Get(this)->PushConfirmScreenToModalStackAsync(
 		EConfirmScreenType::Ok,
 		FText::FromString(TEXT("key Remap")),
 		FText::FromString(CanceledReason),

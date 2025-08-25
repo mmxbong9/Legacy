@@ -31,7 +31,7 @@ void UAsyncAction_PushConfirmScreen::Activate()
 {
 	Super::Activate();
 
-	UFrontendSubsystem::Get(CachedOwningWorld.Get())->PushConfirmScreenToPopupStackAsync(
+	UFrontendSubsystem::Get(CachedOwningWorld.Get())->PushConfirmScreenToModalStackAsync(
 		CachedScreenType, CachedScreenTitle, CachedScreenMessage,
 		[this](EConfirmScreenButtonType ClickedButtonType)
 		{

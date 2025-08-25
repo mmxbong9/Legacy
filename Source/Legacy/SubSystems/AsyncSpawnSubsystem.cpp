@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// bong9 All Rights Reserved
 
 #include "AsyncSpawnSubsystem.h"
 #include "FrameDropSubsystem.h"

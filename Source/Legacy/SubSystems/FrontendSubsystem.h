@@ -43,11 +43,11 @@ public:
 	void PushSoftWidgetToStackAsync(const FGameplayTag& InWidgetStackTag, TSoftClassPtr<ULeActivatableWidget> InSoftWidgetClass,
 		TFunction<void(EAsyncPushWidgetState, ULeActivatableWidget*)> ASyncPushStateCallback);
 
-	void PushConfirmScreenToPopupStackAsync(EConfirmScreenType InScreenType, const FText& InScreenTitle, const FText& InScreenMessage,
+	void PushConfirmScreenToModalStackAsync(EConfirmScreenType InScreenType, const FText& InScreenTitle, const FText& InScreenMessage,
 		TFunction<void(EConfirmScreenButtonType)> ButtonClickedCallback);
 
 	UFUNCTION(BlueprintCallable)
-	void RemoveActivatedPopup();
+	void RemoveActivatedModal();
 
 	UPROPERTY(BlueprintAssignable)
 	FOnButtonDescriptionTextUpdatedDelegate OnButtonDescriptionTextUpdated;

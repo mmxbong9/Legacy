@@ -20,9 +20,10 @@ public class Legacy : ModuleRules
 			"UMG",
 			"CommonInput",
 			"PropertyPath",
-			"PreLoadScreen"
+			"PreLoadScreen",
+			"GameplayAbilities"
 		});
-
+		
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "UMG",
@@ -30,7 +31,8 @@ public class Legacy : ModuleRules
 			"SlateCore",
             "Niagara",
             "MotionWarping",
-            "AnimGraphRuntime"
+            "AnimGraphRuntime",
+            "GameplayTasks"
         });
     }
 }

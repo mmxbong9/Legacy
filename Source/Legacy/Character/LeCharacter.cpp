@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// bong9 All Rights Reserved
 
 #include "LeCharacter.h"
 
@@ -16,8 +16,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Components/LeAbilitySystemComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Legacy/Legacy.h"
+#include "Legacy/Global/GlobalUtil.h"
 #include "Legacy/Helpers/CharacterHelper.h"
 #include "Legacy/Interfaces/AnimInterface.h"
 #include "Legacy/Player/LePlayerController.h"
@@ -28,22 +30,21 @@
 ALeCharacter::ALeCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
 	bCanInteract = true;
 	
 	bIsAiming       = false;
 	CurrentMoveType = EMoveType::Jogging;
 	EquipWeapon     = EEquipWeapon::UnArmed;
 
-	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(GET_MEMBER_NAME(HealthComponent));
 	HealthComponent->SetIsReplicated(true);
 	
-	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("Combat"));
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>(GET_MEMBER_NAME(CombatComponent));
 	CombatComponent->SetIsReplicated(true);
 	
-	MotionWarping = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarping"));
+	MotionWarping = CreateDefaultSubobject<UMotionWarpingComponent>(GET_MEMBER_NAME(MotionWarping));
 	
-	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(GET_MEMBER_NAME(SpringArm));
 	SpringArm->SetupAttachment(GetCapsuleComponent());
 	SpringArm->bUsePawnControlRotation = false;
 	SpringArm->TargetArmLength = 350.f;
@@ -60,8 +61,14 @@ ALeCharacter::ALeCharacter()
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 	GetCharacterMovement()->AirControl = 0.35f;
 	
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	Camera = CreateDefaultSubobject<UCameraComponent>(GET_MEMBER_NAME(Camera));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+
+	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetGenerateOverlapEvents(true);
 
 	if (ConcreteImpactSounds.IsEmpty())
 	{
@@ -94,7 +101,7 @@ ALeCharacter::ALeCharacter()
 	LOAD_OBJECT_ASSIGN(RifleFireSound,          USoundBase,     "/Game/ALS/MetaSound/MSP_RifleFire");
 
 	LOAD_ASSET_SET_SKELETAL(GetMesh(), "/Game/ALS/Characters/Heroes/Mannequin/Meshes/SKM_Manny");
-		
+
 	GetMesh()->SetRelativeLocation(FVector(0, 0, -90));
 	GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
 		
@@ -106,11 +113,12 @@ ALeCharacter::ALeCharacter()
 		
 	Pistol = UCharacterHelper::CreateSkeletalMeshWithAsset(this, TEXT("Pistol"), GetMesh(), TEXT("PistolUnEquipe"),TEXT("/Game/ALS/SkeletalMeshs/Pistol/SK_Pistol"));
 	Rifle  = UCharacterHelper::CreateSkeletalMeshWithAsset(this, TEXT("Rifle"),  GetMesh(), TEXT("RifleUnEquipe"), TEXT("/Game/ALS/SkeletalMeshs/Rifle/SK_Rifle"));
+	Hammer = UCharacterHelper::CreateSkeletalMeshWithAsset(this, TEXT("Hammer"), GetMesh(), TEXT("HammerUnequip"), TEXT("/Game/ALS/SkeletalMeshs/Hammer/SKM_Hammer"));
 
 	PistolWidget = UCharacterHelper::CreateWidgetCompWithClass(this, TEXT("PistolWidget"), Pistol, TEXT("Widget"), TEXT("/Game/ALS/UI/Widgets/WBP_LePistolUI"), EWidgetSpace::Screen, FVector2D(400, 80));
 	RifleWidget  = UCharacterHelper::CreateWidgetCompWithClass(this, TEXT("RifleWidget"),   Rifle, TEXT("Widget"), TEXT("/Game/ALS/UI/Widgets/WBP_LeRifleUI"),  EWidgetSpace::Screen, FVector2D(400, 80));
 	
-	ShieldWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("ShieldWidget"));
+	ShieldWidget = CreateDefaultSubobject<UWidgetComponent>(GET_MEMBER_NAME(ShieldWidget));
 	ShieldWidget->SetupAttachment(HealthBar, NAME_None);
 	ShieldWidget->SetDrawSize(FVector2D(50, 50));
 	ShieldWidget->SetRelativeLocation(FVector(-2.6f, -1.5f, 19.1f));
@@ -122,6 +130,7 @@ ALeCharacter::ALeCharacter()
 	LOAD_CLASS_ASSIGN(UnArmedAnimClass, UAnimInstance, "/Game/Le/ABP_LeUnArmed");
 	LOAD_CLASS_ASSIGN(PistolAnimClass,  UAnimInstance, "/Game/Le/ABP_LePistol");
 	LOAD_CLASS_ASSIGN(RifleAnimClass,   UAnimInstance, "/Game/Le/ABP_LeRifle");
+	LOAD_CLASS_ASSIGN(HammerAnimClass,  UAnimInstance, "/Game/Le/ABP_LeHammer");
 
 	LOAD_OBJECT_ASSIGN(WeaponMovementSettingDataTable, UDataTable, "/Game/Le/DataTables/DT_WeaponMovement");
 
@@ -138,6 +147,7 @@ ALeCharacter::ALeCharacter()
 	LOAD_OBJECT_ASSIGN(SelectWeapon1IA, UInputAction, "/Game/ALS/Inputs/InputActions/IA_SelectWeapon1");
 	LOAD_OBJECT_ASSIGN(SelectWeapon2IA, UInputAction, "/Game/ALS/Inputs/InputActions/IA_SelectWeapon2");
 	LOAD_OBJECT_ASSIGN(SelectWeapon3IA, UInputAction, "/Game/ALS/Inputs/InputActions/IA_SelectWeapon3");
+	LOAD_OBJECT_ASSIGN(SelectWeapon4IA, UInputAction, "/Game/ALS/Inputs/InputActions/IA_SelectWeapon4");
 	LOAD_OBJECT_ASSIGN(SwitchWeaponIA,  UInputAction, "/Game/ALS/Inputs/InputActions/IA_SwitchWeapon");
 	LOAD_OBJECT_ASSIGN(MainMenuIA,      UInputAction, "/Game/ALS/Inputs/InputActions/IA_MainMenu");
 
@@ -193,6 +203,15 @@ void ALeCharacter::NotifyControllerChanged()
 	}
 }
 
+void ALeCharacter::PushActor_Implementation(const FVector& Direction, const float Strength)
+{
+	FVector NormalizedDirection = Direction.GetSafeNormal();
+	FVector Offset = NormalizedDirection * Strength;
+	FVector NewLocation = GetActorLocation() + Offset;
+	
+	SetActorLocation(NewLocation);
+}
+
 void ALeCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
@@ -242,6 +261,35 @@ void ALeCharacter::BeginPlay()
 	}
 }
 
+void ALeCharacter::InitializeDefaultAttributes()
+{
+	ApplyEffectToTarget(SecondaryAttributes, 1.f);
+	ApplyEffectToTarget(MainAttributes, 1.f);
+	ApplyEffectToTarget(DefaultAttributes, 1.f);
+}
+
+void ALeCharacter::ApplyEffectToTarget(const TSubclassOf<UGameplayEffect>& GameplayEffectClass, const float Level)
+{
+	if (!GetAbilitySystemComponent()) return;
+	if (!GameplayEffectClass) return;
+
+	FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponent()->MakeEffectContext();
+	ContextHandle.AddSourceObject(this);
+	const FGameplayEffectSpecHandle SpecHandle = GetAbilitySystemComponent()->MakeOutgoingSpec(GameplayEffectClass, Level, ContextHandle);
+	GetAbilitySystemComponent()->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), GetAbilitySystemComponent());
+}
+
+void ALeCharacter::AddAbilities() const
+{
+	if (!HasAuthority()) return;
+
+	if (ULeAbilitySystemComponent* ASC = Cast<ULeAbilitySystemComponent>(AbilitySystemComponent.Get()))
+	{
+		ASC->AddAbilities(CommonAbilities);
+		ASC->AddAbilities(DestroyerAbilities);
+	}
+}
+
 void ALeCharacter::Tick(float InDeltaTime)
 {
 	Super::Tick(InDeltaTime);
@@ -283,6 +331,7 @@ void ALeCharacter::SetupPlayerInputComponent(UInputComponent* InPlayerInputCompo
 	PlayerInputComponent->BindAction(SelectWeapon1IA,ETriggerEvent::Triggered, this, &ALeCharacter::Input_SelectWeapon1);
 	PlayerInputComponent->BindAction(SelectWeapon2IA,ETriggerEvent::Triggered, this, &ALeCharacter::Input_SelectWeapon2);
 	PlayerInputComponent->BindAction(SelectWeapon3IA,ETriggerEvent::Triggered, this, &ALeCharacter::Input_SelectWeapon3);
+	PlayerInputComponent->BindAction(SelectWeapon4IA,ETriggerEvent::Triggered, this, &ALeCharacter::Input_SelectWeapon4);
 	PlayerInputComponent->BindAction(LookIA,         ETriggerEvent::Triggered, this, &ALeCharacter::Input_Look);
 	PlayerInputComponent->BindAction(MoveIA,         ETriggerEvent::Triggered, this, &ALeCharacter::Input_Move);
 	PlayerInputComponent->BindAction(AimIA,          ETriggerEvent::Started,   this, &ALeCharacter::Input_AimStart);
@@ -294,6 +343,29 @@ void ALeCharacter::SetupPlayerInputComponent(UInputComponent* InPlayerInputCompo
 	PlayerInputComponent->BindAction(InteractionIA,  ETriggerEvent::Started,   this, &ALeCharacter::Input_Interaction);
 	PlayerInputComponent->BindAction(ReloadIA,       ETriggerEvent::Started,   this, &ALeCharacter::Input_Reload);
 	PlayerInputComponent->BindAction(MainMenuIA,     ETriggerEvent::Triggered, this, &ALeCharacter::Input_MainMenu);
+
+	BindTaggedInputActions(InputTagsMap, this, &ThisClass::AbilityAction);
+}
+
+template <class TargetClass, typename TargetFunction>
+void ALeCharacter::BindTaggedInputActions(TMap<TObjectPtr<UInputAction>, FGameplayTag>& InputTagsMap, TargetClass* TargetObject, TargetFunction CallBack)
+{
+	if (InputTagsMap.IsEmpty()) return;
+
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		for (const TPair<TObjectPtr<UInputAction>, FGameplayTag>& Pair : InputTagsMap)
+		{
+			UInputAction* Action = Pair.Key.Get();
+			FGameplayTag Tag = Pair.Value;
+
+			if (Action && Tag.IsValid())
+			{
+				EnhancedInput->BindAction(Action, ETriggerEvent::Triggered, TargetObject, CallBack, Tag, true);
+				EnhancedInput->BindAction(Action, ETriggerEvent::Completed, TargetObject, CallBack, Tag, false);
+			}
+		}
+	}
 }
 
 #pragma region - CharacterInter Interface
@@ -481,7 +553,7 @@ void ALeCharacter::ChangeWeapon(const EEquipWeapon InWeapon)
 	}
 	
 	if (!IsValid(GetMesh())) return;
-	if (!IsValid(Pistol) || !IsValid(Rifle)) return;
+	if (!IsValid(Pistol.Get()) || !IsValid(Rifle.Get())) return;
 	
 	switch (InWeapon)
 	{
@@ -489,18 +561,28 @@ void ALeCharacter::ChangeWeapon(const EEquipWeapon InWeapon)
 			{
 				Pistol->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.PistolUnEquipe);
 				Rifle->AttachToComponent (GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.RifleUnEquipe);
+				Hammer->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.HammerWeaponUnequip);
 			}
 			break;
 		case EEquipWeapon::Pistol:
 			{
 				Pistol->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.WeaponEquiped);
 				Rifle->AttachToComponent (GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.RifleUnEquipe);
+				Hammer->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.HammerWeaponUnequip);
 			}
-		 break;
+			break;
 		case EEquipWeapon::Rifle:
 			{
 				Pistol->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.PistolUnEquipe);
 				Rifle->AttachToComponent (GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.WeaponEquiped);
+				Hammer->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.HammerWeaponUnequip);
+			}
+			break;
+		case EEquipWeapon::Hammer:
+			{
+				Pistol->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.PistolUnEquipe);
+				Rifle->AttachToComponent (GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.RifleUnEquipe);
+				Hammer->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocketNames.HammerWeaponEquip);
 			}
 			break;
 		default: break;
@@ -528,6 +610,7 @@ void ALeCharacter::SetLinkAnimClassLayer(const EEquipWeapon InWeapon) const
 	case EEquipWeapon::UnArmed: GetMesh()->LinkAnimClassLayers(UnArmedAnimClass); break;
 	case EEquipWeapon::Pistol:  GetMesh()->LinkAnimClassLayers(PistolAnimClass);  break;
 	case EEquipWeapon::Rifle:   GetMesh()->LinkAnimClassLayers(RifleAnimClass);   break;
+	case EEquipWeapon::Hammer:  GetMesh()->LinkAnimClassLayers(HammerAnimClass);  break;
 	default:
 		LOG_ERROR("Unknown weapon type!");
 		break;
@@ -549,7 +632,7 @@ void ALeCharacter::OnAimTimelineFinished()
 
 void ALeCharacter::Input_SwitchWeapon()
 {
-	Process_SelectWeapon(ToggleEnum(EquipWeapon));
+	Process_SelectWeapon(EnumUtil::ToggleEnum(EquipWeapon));
 }
 
 void ALeCharacter::Input_SelectWeapon1()
@@ -565,6 +648,11 @@ void ALeCharacter::Input_SelectWeapon2()
 void ALeCharacter::Input_SelectWeapon3()
 {
 	Process_SelectWeapon(EEquipWeapon::Rifle);
+}
+
+void ALeCharacter::Input_SelectWeapon4()
+{
+	Process_SelectWeapon(EEquipWeapon::Hammer);
 }
 
 void ALeCharacter::Input_Look(const FInputActionValue& InValue)
@@ -678,5 +766,23 @@ void ALeCharacter::Input_MainMenu()
 	if (PC && PC->IsLocalController())
 	{
 		PC->ToggleMainMenu();
+	}
+}
+
+void ALeCharacter::AbilityAction(FGameplayTag ActionTag, bool bPressed)
+{
+	// todo: 현재 스킬은 Hammer 전용 스킬 어빌리티임. 무기별 스킬이 추가되면 무기 스왑시 어빌리티를 등록 / 해제 하는 식으로 작업
+	if (GetCurrentEquipWeapon() != EEquipWeapon::Hammer) return;
+	
+	if (ULeAbilitySystemComponent* LeASC = Cast<ULeAbilitySystemComponent>(AbilitySystemComponent))
+	{
+		if (bPressed)
+		{
+			LeASC->AbilityInputPressed(ActionTag);
+		}
+		else
+		{
+			LeASC->AbilityInputReleased(ActionTag);
+		}
 	}
 }

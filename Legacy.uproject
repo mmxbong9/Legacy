@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{909D57D4-445D-09F8-A2F3-E28710441F3B}",
+	"EngineAssociation": "{D52191C3-477B-F2A5-6BB5-32BFAC11C3C8}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -76,6 +76,10 @@
 		},
 		{
 			"Name": "MediaMovieStreamer",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
 			"Enabled": true
 		}
 	]

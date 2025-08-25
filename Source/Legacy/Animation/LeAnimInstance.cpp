@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// bong9 All Rights Reserved
 
 #include "LeAnimInstance.h"
 
@@ -6,10 +6,21 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PawnMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Legacy/Character/LeCharacter.h"
 
 void ULeAnimInstance::NativeUpdateAnimation(float InDeltaSeconds)
 {
 	Super::NativeUpdateAnimation(InDeltaSeconds);
+
+	// todo: 캐싱해 놓고 사용하자.
+	if (ALeCharacter* OwnerCharacter = Cast<ALeCharacter>(TryGetPawnOwner()))
+	{
+		UCharacterMovementComponent* MovementComponent = OwnerCharacter->GetCharacterMovement();
+		bool bIsAccelerating = MovementComponent->GetCurrentAcceleration().Size() > 0.f;
+		
+		// Orientation logic
+		OwnerCharacter->bUseControllerRotationYaw = bIsAccelerating;
+	}
 
 	// if (!IsValid(TryGetPawnOwner())) return;
 	//

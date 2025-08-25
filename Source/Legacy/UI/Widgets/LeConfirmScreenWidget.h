@@ -51,7 +51,7 @@ class LEGACY_API ULeConfirmScreenWidget : public ULeActivatableWidget
 	GENERATED_BODY()
 
 public:
-	// Gets called outside of the class when this widget is constructed and before it's pushed to the modal(popup) stack
+	// Gets called outside of the class when this widget is constructed and before it's pushed to the modal(Modal) stack
 	void InitConfirmScreen(ULeConfirmInfoObject* InScreenInfoObject, TFunction<void(EConfirmScreenButtonType)> ClickedButtonCallback);
 
 protected:

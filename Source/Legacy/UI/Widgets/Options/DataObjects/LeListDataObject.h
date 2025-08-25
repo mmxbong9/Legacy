@@ -38,7 +38,7 @@ public:
 	virtual TArray<ULeListDataObject*> GetAllChildListData() const { return TArray<ULeListDataObject*>(); }
 	virtual bool HasAnyChildListData() const { return false; }
 
-	void SetShouldApplySettingsImmediately(bool bShouldApplyRightAway) { bShouldApplyChangeImmediatly = bShouldApplyRightAway; }
+	void SetShouldApplySettingsImmediately(bool bShouldApplyRightAway) { bShouldApplyChangeImmediately = bShouldApplyRightAway; }
 
 	// The child class should override them to provide implementations for resetting the data
 	virtual bool HasDefaultValue() const { return false; }
@@ -78,7 +78,7 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ULeListDataObject> ParentData;
 
-	bool bShouldApplyChangeImmediatly = false;
+	bool bShouldApplyChangeImmediately = false;
 
 	UPROPERTY(Transient)
 	TArray<FOptionsDataEditConditionDescriptor> EditConditionDescArray;

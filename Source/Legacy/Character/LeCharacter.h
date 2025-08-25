@@ -1,13 +1,17 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// bong9 All Rights Reserved
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayTagContainer.h"
 #include "Components/TimelineComponent.h"
 #include "GameFramework/Character.h"
 #include "MotionWarpingComponent.h"
+#include "Components/LeAbilitySystemComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Legacy/Interfaces/CharacterInterface.h"
+#include "Legacy/Interfaces/HitInterface.h"
 #include "Legacy/Types/LeTypes.h"
 
 #include "LeCharacter.generated.h"
@@ -30,22 +34,26 @@ struct FInputActionValue;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponChanged, EEquipWeapon, NewWeapon);
 
-UCLASS(Blueprintable)
-class LEGACY_API ALeCharacter : public ACharacter, public ICharacterInterface
+UCLASS(Blueprintable, ShowCategories=("Combat|Abilities"))
+class LEGACY_API ALeCharacter : public ACharacter, public ICharacterInterface, public IAbilitySystemInterface, public IHitInterface
 {
 	GENERATED_BODY()
 
 public:
 	ALeCharacter();
 
+	// todo: 레벨은 PlayerState 에서 관리 되어야함. 레벨별 Attribute stat 값 계산을 위해 임시로 지정. 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float CharacterLevel = 1.f;
+
 	UPROPERTY(BlueprintAssignable, Category = "Event")
 	FOnWeaponChanged OnWeaponChanged;
 
-	FORCEINLINE TObjectPtr<UStaticMeshComponent> GetHealthBar() const { return HealthBar; }
+	FORCEINLINE UStaticMeshComponent* GetHealthBar() const { return HealthBar; }
 	
-	FORCEINLINE TObjectPtr<UWidgetComponent> GetShieldWidget() const { return ShieldWidget; }
-	FORCEINLINE TObjectPtr<UWidgetComponent> GetPistolWidget() const { return PistolWidget; }
-	FORCEINLINE TObjectPtr<UWidgetComponent> GetRifleWidget()  const { return RifleWidget; }
+	FORCEINLINE UWidgetComponent* GetShieldWidget() const { return ShieldWidget.Get(); }
+	FORCEINLINE UWidgetComponent* GetPistolWidget() const { return PistolWidget.Get(); }
+	FORCEINLINE UWidgetComponent* GetRifleWidget()  const { return RifleWidget.Get(); }
 
 	FORCEINLINE EEquipWeapon GetCurrentEquipWeapon() const { return EquipWeapon; }
 	FORCEINLINE EMoveType    GetCurrentMoveType()    const { return CurrentMoveType; }
@@ -55,43 +63,62 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_SetIsAiming(const bool bNewAiming);
 
-	FORCEINLINE TObjectPtr<USkeletalMeshComponent> GetPistolSkeletalMesh() const { return Pistol; }
-	FORCEINLINE TObjectPtr<USkeletalMeshComponent> GetRifleSkeletalMesh()  const { return Rifle; }
+	FORCEINLINE const TArray<TObjectPtr<USoundBase>>& GetConcreteImpactSounds() const { return ConcreteImpactSounds; }
+	FORCEINLINE const TArray<TObjectPtr<USoundBase>>& GetGlassImpactSounds()    const { return GlassImpactSounds; }
+	
+	FORCEINLINE USkeletalMeshComponent* GetPistolSkeletalMesh() const { return Pistol.Get(); }
+	FORCEINLINE USkeletalMeshComponent* GetRifleSkeletalMesh()  const { return Rifle.Get(); }
 
-	FORCEINLINE TArray<TObjectPtr<USoundBase>> GetConcreteImpactSounds() const { return ConcreteImpactSounds; }
-	FORCEINLINE TArray<TObjectPtr<USoundBase>> GetGlassImpactSounds()    const { return GlassImpactSounds; }
+	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent.Get(); }
 	
-	FORCEINLINE TObjectPtr<UNiagaraSystem> GetFireTracerEffect()     const { return FireTracerEffect; }
+	FORCEINLINE UNiagaraSystem* GetFireTracerEffect()         const { return FireTracerEffect.Get(); }
+	FORCEINLINE UNiagaraSystem* GetConcreteImpactEffect()     const { return ConcreteImpactEffect.Get(); }
+	FORCEINLINE UNiagaraSystem* GetGlassImpactEffect()        const { return GlassImpactEffect.Get(); }
 	
-	FORCEINLINE TObjectPtr<UNiagaraSystem> GetConcreteImpactEffect() const { return ConcreteImpactEffect; }
-	FORCEINLINE TObjectPtr<UNiagaraSystem> GetGlassImpactEffect()    const { return GlassImpactEffect; }
-	
-	FORCEINLINE TObjectPtr<UAnimMontage> GetPistolFireMontage()   const { return PistolFireMontage; }
-	FORCEINLINE TObjectPtr<UAnimMontage> GetPistolReloadMontage() const { return PistolReloadMontage; }
-
-	FORCEINLINE TObjectPtr<UAnimSequence> GetPistolFireAnimSequence()   const { return PistolFireAnimSequence; }
-	FORCEINLINE TObjectPtr<UAnimSequence> GetPistolReloadAnimSequence() const { return PistolReloadAnimSequence; }
-	FORCEINLINE TObjectPtr<USoundBase>    GetPistolFireSound()          const { return PistolFireSound; }
-	
-	FORCEINLINE TObjectPtr<UAnimMontage> GetRifleFireMontage()   const { return RifleFireMontage; }
-	FORCEINLINE TObjectPtr<UAnimMontage> GetRifleReloadMontage() const { return RifleReloadMontage; }
-
-	FORCEINLINE TObjectPtr<UAnimSequence> GetRifleFireAnimSequence()   const { return RifleFireAnimSequence; }
-	FORCEINLINE TObjectPtr<UAnimSequence> GetRifleReloadAnimSequence() const { return RifleReloadAnimSequence; }
-	FORCEINLINE TObjectPtr<USoundBase>    GetRifleFireSound()          const { return RifleFireSound; }
+	FORCEINLINE UAnimMontage*   GetPistolFireMontage()        const { return PistolFireMontage.Get(); }
+	FORCEINLINE UAnimMontage*   GetPistolReloadMontage()      const { return PistolReloadMontage.Get(); }
+	FORCEINLINE UAnimSequence*  GetPistolFireAnimSequence()   const { return PistolFireAnimSequence.Get(); }
+	FORCEINLINE UAnimSequence*  GetPistolReloadAnimSequence() const { return PistolReloadAnimSequence.Get(); }
+	FORCEINLINE USoundBase*     GetPistolFireSound()          const { return PistolFireSound.Get(); }
+	FORCEINLINE UAnimMontage*   GetRifleFireMontage()         const { return RifleFireMontage.Get(); }
+	FORCEINLINE UAnimMontage*   GetRifleReloadMontage()       const { return RifleReloadMontage.Get(); }
+	FORCEINLINE UAnimSequence*  GetRifleFireAnimSequence()    const { return RifleFireAnimSequence.Get(); }
+	FORCEINLINE UAnimSequence*  GetRifleReloadAnimSequence()  const { return RifleReloadAnimSequence.Get(); }
+	FORCEINLINE USoundBase*     GetRifleFireSound()           const { return RifleFireSound.Get(); }
 	
 	static UMotionWarpingComponent* FindMotionWarpingComponent(const AActor* Actor) { return (Actor ? Actor->FindComponentByClass<UMotionWarpingComponent>() : nullptr); }
 
+	//~ Begin AActor Interface
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void NotifyControllerChanged() override;
+	//~ End AActor Interface
+
+	//~ Begin IHitInterface
+	virtual void PushActor_Implementation(const FVector& Direction, const float Strength) override;
+	//~ End IHitInterface
+
+	//~ Begin IAbilitySystemInterface
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent.Get(); }
+	//~ End IAbilitySystemInterface
 
 protected:
+	//~ Begin AActor Interface
 	virtual void PostInitializeComponents() override;
 	virtual void BeginPlay() override;
+	//~ End AActor Interface
+
+	virtual void InitializeAbilitySystem() PURE_VIRTUAL(ThisClass::InitializeAbilitySystem, );
+	virtual void InitializeDefaultAttributes();
+
+	void ApplyEffectToTarget(const TSubclassOf<UGameplayEffect>& GameplayEffectClass, const float Level);
+
+	void AddAbilities() const;
 
 public:
+	//~ Begin APawn Interface
 	virtual void Tick(float InDeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* InPlayerInputComponent) override;
+	//~ Begin APawn Interface
 
 private:
 	//- Character Interface
@@ -116,7 +143,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite) TSubclassOf<UParkourComponent>      ParkourClass;
 	UPROPERTY(VisibleAnywhere,  BlueprintReadOnly)  TObjectPtr<UParkourComponent>       Parkour;
 	UPROPERTY(VisibleAnywhere,  BlueprintReadOnly)  TObjectPtr<UMotionWarpingComponent> MotionWarping;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly) TObjectPtr<UStaticMeshComponent> Torch;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly) TObjectPtr<UStaticMeshComponent> TorchHolder;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly) TObjectPtr<UStaticMeshComponent> PistolHolster;
@@ -125,6 +152,7 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="01.Settings|Weapon") TObjectPtr<USkeletalMeshComponent> Rifle;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="01.Settings|Weapon") TObjectPtr<USkeletalMeshComponent> Pistol;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="01.Settings|Weapon") TObjectPtr<USkeletalMeshComponent> Hammer;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="01.Settings|Widget") TObjectPtr<UWidgetComponent>  PistolWidget;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="01.Settings|Widget") TObjectPtr<UWidgetComponent>  RifleWidget;
@@ -157,6 +185,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="01.Settings|WeaponClass") TSubclassOf<UAnimInstance> UnArmedAnimClass;
 	UPROPERTY(EditAnywhere, Category="01.Settings|WeaponClass") TSubclassOf<UAnimInstance> PistolAnimClass;
 	UPROPERTY(EditAnywhere, Category="01.Settings|WeaponClass") TSubclassOf<UAnimInstance> RifleAnimClass;
+	UPROPERTY(EditAnywhere, Category="01.Settings|WeaponClass") TSubclassOf<UAnimInstance> HammerAnimClass;
 	
 	UPROPERTY(EditAnywhere, Category="01.Settings|Weapon|Pistol") TObjectPtr<UAnimMontage>  PistolFireMontage;
 	UPROPERTY(EditAnywhere, Category="01.Settings|Weapon|Pistol") TObjectPtr<UAnimMontage>  PistolReloadMontage;
@@ -169,6 +198,27 @@ protected:
 	UPROPERTY(EditAnywhere, Category="01.Settings|Weapon|Rifle")  TObjectPtr<UAnimSequence> RifleFireAnimSequence;
 	UPROPERTY(EditAnywhere, Category="01.Settings|Weapon|Rifle")  TObjectPtr<UAnimSequence> RifleReloadAnimSequence;
 	UPROPERTY(EditAnywhere, Category="01.Settings|Weapon|Rifle")  TObjectPtr<USoundBase>    RifleFireSound;
+
+	UPROPERTY(EditAnywhere, Category="Combat|Abilities", meta=(DisplayPriority="1", ShowOnlyInnerProperties))
+	TArray<TSubclassOf<ULeGameplayAbility>> CommonAbilities;
+
+	UPROPERTY(EditAnywhere, Category="Combat|Abilities", meta=(DisplayPriority="1", ShowOnlyInnerProperties))
+	TArray<TSubclassOf<ULeGameplayAbility>> DestroyerAbilities;
+
+	UPROPERTY(EditAnywhere, Category="Combat|Attributes", meta=(DisplayPriority="1", ShowOnlyInnerProperties))
+	TSubclassOf<UGameplayEffect> DefaultAttributes;
+
+	UPROPERTY(EditAnywhere, Category="Combat|Attributes", meta=(DisplayPriority="1", ShowOnlyInnerProperties))
+	TSubclassOf<UGameplayEffect> MainAttributes;
+
+	UPROPERTY(EditAnywhere, Category="Combat|Attributes", meta=(DisplayPriority="1", ShowOnlyInnerProperties))
+	TSubclassOf<UGameplayEffect> SecondaryAttributes;
+	
+	UPROPERTY()
+	TObjectPtr<UAttributeSet> AttributeSet;
+
+	UPROPERTY()
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
 private:
 	UFUNCTION(Server, Reliable)
@@ -230,6 +280,7 @@ protected:
 	void Input_SelectWeapon1();
 	void Input_SelectWeapon2();
 	void Input_SelectWeapon3();
+	void Input_SelectWeapon4();
 	void Input_Look        (const FInputActionValue& InValue);
 	void Input_Move        (const FInputActionValue& InValue);
 	void Input_AimStart();
@@ -241,6 +292,7 @@ protected:
 	void Input_Reload();
 	void Input_Interaction();
 	void Input_MainMenu();
+	void AbilityAction(FGameplayTag ActionTag, bool bPressed);
 	//~ Input Events
 	
 protected:
@@ -258,6 +310,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SelectWeapon1IA;
 	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SelectWeapon2IA;
 	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SelectWeapon3IA;
+	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> SelectWeapon4IA;
 	UPROPERTY(EditDefaultsOnly, Category="01.Settings|Input|Character") TObjectPtr<UInputAction> MainMenuIA;
 	//~ Input Assets
+
+	template<class TargetClass, typename TargetFunction>
+	void BindTaggedInputActions(TMap<TObjectPtr<UInputAction>, FGameplayTag>& InputTagsMap, TargetClass* TargetObject, TargetFunction CallBack);
+
+private:
+	UPROPERTY(EditAnywhere, Category=Inpuit)
+	TMap<TObjectPtr<UInputAction>, FGameplayTag> InputTagsMap;
 };
